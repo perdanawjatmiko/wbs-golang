@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-13 — Phase 3 admin workflow and ticket management
+
+- Add report.view-protected list/detail/dashboard/options and authorized bounded private attachment streaming.
+- Add report.update-protected transactional status/notes workflow, mandatory rejection reason, precise optimistic version and shared quota-lock reactivation safety.
+- Add atomic immutable API histories with admin/internal/external projections; hide internal-only events publicly and preserve creation event for Open notes.
+- Upgrade admin dashboard/navigation, list/filter/pagination/detail and status/notes forms with conflicts/refetch; extend finite cookie adapter with response caps.
+- Add isolated PostgreSQL workflow/RBAC/rollback/concurrency tests, frontend markup/logic and real HTTP smoke coverage, and Phase3 docs.
+- Reuse migrations/schema/dependencies and Phase0–2 behavior; no Phase4–5 features or deployment.
+
 ## 2026-11-13 — Phase 2 public reporting and tracking
 
 - Additive counter/quota/timeline indexes; reuse reports/history tables without rewriting data.

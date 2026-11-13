@@ -65,3 +65,12 @@ Use explicit APP_TIMEZONE=Asia/Jakarta and private UPLOAD_DIR (default backend/v
 DB integration: set TEST_PHASE2_DATABASE_URL to dedicated test PostgreSQL, then `go test -v ./tests -run Phase2`. For full regression also set TEST_PHASE1_DATABASE_URL. Suites generate disposable schemas; main dev/production data is never targeted. HTTP public smoke opts in with TEST_PUBLIC_WEB_BASE_URL and requires a seeded active QA report type; it creates real reports and must run only on QA. See phase-2.md.
 
 Troubleshooting: 409 quota counts only non-Done/non-Rejected reports for exact canonical contact; do not delete/reset counters to bypass it. 422 attachment: verify true format, extension, MIME and valid structure; strict PDF validator may reject nonconforming files. 429: wait window/upload slots, remember adapter-IP sharing. 503 SUBMISSION_UNCERTAIN or network timeout: do not automatically resend; code may already have been committed. Stage/final orphans require conservative operator reconciliation, not blind deletion.
+
+
+## Phase 3 admin workflow
+
+Grant report.view for list/detail/dashboard/attachment and report.update for status/notes via Phase1 role management. Open /admin or /admin/reports. Writer permission does not grant view; dashboard shows fallback without report.view. Use exact updated_at string for API mutations; on409 reload/review before sending a new action. Rejected requires an external reason.
+
+Enable TEST_PHASE3_DATABASE_URL alongside previous regression flags for real isolated workflow/quota/history tests. Test suite creates random schema and injects history failure only there. HTTP suite uses TEST_ADMIN_WORKFLOW_WEB_BASE_URL with existing test admin credentials, against QA only; it creates real fixture reports/accounts/history. See phase-3.md for commands/evidence.
+
+Attachment access always goes through protected /api/backend/admin/reports/:id/attachment (browser) -> Go authorized route; never expose upload root. Missing file404 is safe; preview metadata available=false. Query/history caps,15s adapter timeout and current upload ceilings bound transfers. Next dev incoming logs disabled to keep authorized contact search out of terminal; do not enable full query/body/cookie logging.

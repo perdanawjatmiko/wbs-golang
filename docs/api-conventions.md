@@ -73,3 +73,16 @@ No admin auth needed; public adapter never forwards admin credentials. All endpo
 New errors: REPORT_ACTIVE_LIMIT_REACHED409 (max5), REPORT_NOT_FOUND404 (generic mismatch), INVALID_ATTACHMENT422, ATTACHMENT_TOO_LARGE413, MULTIPART_REQUIRED415, INVALID_MULTIPART400, UPLOAD_BUSY429, RATE_LIMITED429, REPORT_CODE_UNAVAILABLE503, SUBMISSION_UNCERTAIN503, plus VALIDATION_ERROR422/BODY_TOO_LARGE413/INTERNAL_ERROR500. No automatic replay on network or uncertain submission. Full examples: report-submission.md/report-tracking.md.
 
 Next public bridge `/api/public/...` only allows these reporting endpoints and existing public master GETs, has its own streaming body ceiling and timeout, never forwards Cookie/Authorization or sensitive POST query params, and returns no-store/private. GET tracking is not available.
+
+
+## Phase 3 admin reports
+
+GET /api/v1/admin/reports (report.view): search<=200, status, report_type_id, date_from/date_to in APP_TIMEZONE, sort=created_at|updated_at|status, direction=asc|desc, page=1/per_page=20(max100). Data={items,pagination:{page,per_page,total,total_pages}}. Notes omitted from list. Query length<=4096 and malformed/duplicate query parameters rejected.
+
+GET /api/v1/admin/reports/options (report.view): paginated report type IDs/names/active flags for filters, including inactive types. GET /reports/:id (report.view): filtered detail, safe attachment metadata, histories with actor id/name and history_pagination; history_page1/history_per_page50(max100). GET /reports/:id/attachment (report.view): bounded private attachment download, disposition attachment, nosniff, no-store. No raw storage path accepted or returned.
+
+GET /api/v1/admin/dashboard (report.view): total_reports/open_reports/on_progress_reports/done_reports/rejected_reports/recent_reports/by_status/by_report_type. recent_limit10(max50), empty data zeros/lists.
+
+PATCH /api/v1/admin/reports/:id/status (report.update+CSRF): {status,internal_note,external_note,expected_updated_at}. POST /reports/:id/notes: {internal_note,external_note,expected_updated_at}. Echo timestamp exactly; no rounding. Notes<=10000 Unicode characters each. Reject empty external_note for Rejected422; notes-only requires one note. Success acknowledgment id/updated_at (+status only with report.view); never full detail for writer-only roles.
+
+New409 codes: STALE_REPORT, STATUS_UNCHANGED, CONTACT_REVIEW_REQUIRED, REPORT_IDENTITY_CHANGED; reactivation quota uses existing REPORT_ACTIVE_LIMIT_REACHED409. Missing attachment404 ATTACHMENT_NOT_FOUND. Missing/invalid version422 VALIDATION_ERROR. No history edit/delete endpoint. No automatic retry after network/commit uncertainty.

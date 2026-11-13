@@ -1,0 +1,29 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+const base=process.env.TEST_ADMIN_WORKFLOW_WEB_BASE_URL;
+test('HTTP admin workflow: metrics, stale guard, private notes, RBAC and authorized streaming',{skip:!base||!process.env.TEST_ADMIN_EMAIL||!process.env.TEST_ADMIN_PASSWORD},async()=>{
+ const origin=new URL(base).origin;const unique=randomUUID();const contact=`workflow-${unique}@example.test`;
+ async function login(email,password){const response=await fetch(base+'/api/backend/auth/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email,password})});assert.equal(response.status,200);const body=await response.json();return {cookie:response.headers.getSetCookie()[0].split(';')[0],csrf:body.data.csrf_token};}
+ const sa=await login(process.env.TEST_ADMIN_EMAIL,process.env.TEST_ADMIN_PASSWORD);
+ const call=async(path,method='GET',body,session=sa,want=200)=>{const response=await fetch(base+'/api/backend/'+path,{method,headers:{Origin:origin,'Content-Type':'application/json',Cookie:session.cookie,'X-CSRF-Token':session.csrf},body:body?JSON.stringify(body):undefined});assert.equal(response.status,want,path);return response.json();};
+ let response=await fetch(base+'/api/public/report-types');const types=await response.json();assert.ok(types.data.items.length);
+ const form=new FormData();for(const [key,value]of Object.entries({name:'HTTP workflow reporter',contact,contact_type:'EMAIL',report_type_id:types.data.items[0].id,detail:'Plain workflow detail'}))form.set(key,value);const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');form.set('attachment',new File([png],'proof.png',{type:'image/png'}));response=await fetch(base+'/api/public/reports',{method:'POST',headers:{Origin:origin},body:form});assert.equal(response.status,201);const created=await response.json();const code=created.data.report_code;
+ const list=await call('admin/reports?search='+encodeURIComponent(code)+'&per_page=1');assert.equal(list.data.pagination.total,1);const id=list.data.items[0].id;
+ const detail=async()=> (await call(`admin/reports/${id}`)).data;
+ let report=await detail();assert.equal(report.attachment.available,true);
+ const metrics=await call('admin/dashboard?recent_limit=2');assert.ok(metrics.data.total_reports>=1);assert.ok(metrics.data.recent_reports.length<=2);
+ for(const path of ['/admin','/admin/reports',`/admin/reports/${id}`]){response=await fetch(base+path,{headers:{Cookie:sa.cookie}});assert.equal(response.status,200);assert.ok(!(await response.text()).includes('Administrasi belum tersedia'));}
+ response=await fetch(base+`/api/backend/admin/reports/${id}/attachment`,{headers:{Cookie:sa.cookie}});assert.equal(response.status,200);assert.ok(response.headers.get('content-disposition').startsWith('attachment;'));assert.equal(response.headers.get('x-content-type-options'),'nosniff');assert.ok(response.headers.get('cache-control').includes('no-store'));assert.deepEqual(Buffer.from(await response.arrayBuffer()),png);
+ await call(`admin/reports/${id}/status`,'PATCH',{status:'Rejected',external_note:' ',expected_updated_at:report.updated_at},sa,422);
+ const payload={status:'On Progress',internal_note:'PRIVATE HTTP NOTE',external_note:'PUBLIC STATUS NOTE',expected_updated_at:report.updated_at};await call(`admin/reports/${id}/status`,'PATCH',payload);
+ const stale=await call(`admin/reports/${id}/status`,'PATCH',payload,sa,409);assert.equal(stale.error.code,'STALE_REPORT');
+ const tracking=async()=>{const response=await fetch(base+'/api/public/reports/track',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({report_code:code,contact})});assert.equal(response.status,200);return response.json();};
+ let tracked=await tracking();assert.equal(tracked.data.status,'On Progress');assert.ok(JSON.stringify(tracked).includes('PUBLIC STATUS NOTE'));assert.ok(!JSON.stringify(tracked).includes('PRIVATE HTTP NOTE'));
+ report=await detail();const length=tracked.data.timeline.length;await call(`admin/reports/${id}/notes`,'POST',{internal_note:'PRIVATE ONLY TIMESTAMP',expected_updated_at:report.updated_at});tracked=await tracking();assert.equal(tracked.data.timeline.length,length);assert.ok(!JSON.stringify(tracked).includes('PRIVATE ONLY'));
+ const permissions=await call('admin/permissions?page_size=100');const update=permissions.data.items.find(p=>p.slug==='report.update');const role=await call('admin/roles','POST',{name:'HTTP update-only '+unique,permission_ids:[update.id]},sa,201);const email=`restricted-${unique}@example.test`;await call('admin/users','POST',{name:'Restricted QA',email,password:process.env.TEST_ADMIN_PASSWORD,role_id:role.data.id},sa,201);const restricted=await login(email,process.env.TEST_ADMIN_PASSWORD);
+ response=await fetch(base+`/api/backend/admin/reports/${id}/attachment`,{headers:{Cookie:restricted.cookie}});assert.equal(response.status,403);assert.notDeepEqual(Buffer.from(await response.arrayBuffer()),png);await call('admin/dashboard','GET',undefined,restricted,403);await call(`admin/reports/${id}`,'GET',undefined,restricted,403);
+ response=await fetch(base+`/admin/reports/${id}`,{headers:{Cookie:restricted.cookie}});const html=await response.text();assert.ok(html.includes('Akses laporan tidak diizinkan'));assert.ok(!html.includes(contact));
+ report=await detail();const result=await call(`admin/reports/${id}/notes`,'POST',{internal_note:'Update-only action',expected_updated_at:report.updated_at},restricted);for(const key of ['contact','detail','histories','reporter_name','status'])assert.equal(key in result.data,false);
+ await call('auth/logout','POST',{},restricted);await call('auth/logout','POST',{},sa);
+});

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Avoid logging URLs containing authorized contact search queries in development. */
+ logging: { incomingRequests: false },
   turbopack: {
     rules: {
       "*.css": {

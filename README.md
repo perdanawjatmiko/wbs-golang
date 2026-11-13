@@ -1,6 +1,6 @@
 # WBS & Ticketing Application
 
-Phase 2: pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin serta notifikasi belum diimplementasikan.
+Phase 3: workflow admin, pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin, history, notes, dan dashboard sudah tersedia. Notifikasi belum diimplementasikan.
 
 Stack: Go 1.26.2, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 
@@ -11,7 +11,7 @@ backend/
     config/
     middleware/
     modules/{auth,health,master,reports}/
-    platform/{database,httpserver,logger,migration,problem,response,security}/
+    platform/{database,filestore,httpserver,logger,migration,problem,ratelimit,response,security}/
     seed/
   migrations/
   tests/
@@ -20,7 +20,7 @@ frontend/
   src/
     app/
     components/ui/
-    features/{admin,reports,system}/
+    features/{admin,admin-reports,reports,system}/
     lib/{api,config}/
     types/
   .env.example
@@ -143,4 +143,11 @@ Submission menggunakan advisory transaction lock per canonical contact, quota5 a
 
 Tambahan env tersedia di contoh backend/frontend: APP_TIMEZONE, private UPLOAD_DIR, UPLOAD_MAX_FILE_BYTES/REQUEST_BYTES, UPLOAD_ALLOWED_TYPES/MAX_FILES, REPORT_UPLOAD_CONCURRENCY/REQUEST_TIMEOUT/SUBMIT_RATE_LIMIT/TRACK_RATE_LIMIT/RATE_WINDOW. UPLOAD_MAX_REQUEST_BYTES harus selaras di kedua server. Backend/var di-ignore.
 
-Dokumentasi lengkap: [Phase 2](docs/phase-2.md), [submission](docs/report-submission.md), [tracking](docs/report-tracking.md), [private storage](docs/file-storage.md). Hasil tests, acceptance criteria, concurrency evidence dan batasan operasional tercantum di Phase 2. Tidak ada fitur workflow Phase 3–5 atau deployment.
+Dokumentasi lengkap: [Phase 2](docs/phase-2.md), [submission](docs/report-submission.md), [tracking](docs/report-tracking.md), [private storage](docs/file-storage.md). Hasil tests, acceptance criteria, concurrency evidence dan batasan operasional tercantum di Phase 2. Scope Phase 2 tidak mencakup workflow admin; implementasi Phase 3 dijelaskan di bawah. Notifikasi dan deployment belum dibuat.
+
+
+## Phase 3 admin ticket management
+
+/admin menampilkan dashboard untuk report.view; /admin/reports menyediakan search/filter/pagination/sorting, dan /admin/reports/[id] menyediakan detail, attachment privat, history, status/notes forms. report.update tidak otomatis memberikan report.view. Semua perubahan memakai expected_updated_at, contact advisory lock yang sama dengan submission, row lock dan atomic history. Rejected wajib external_note; reopening tidak boleh melewati5 active reports.
+
+Tidak ada migration/dependency/env aplikasi baru; gunakan setup existing dan grant permission melalui role editor. Dokumentasi lengkap: [Phase3](docs/phase-3.md), [workflow/API/lock policy](docs/report-workflow.md), [history and privacy](docs/report-history.md). Public tracking mempertahankan code+contact dan menyaring internal-only history. Tidak ada fitur notifikasi atau deployment Phase4–5.

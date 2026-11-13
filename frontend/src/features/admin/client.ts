@@ -1,6 +1,6 @@
 import type { ApiResponse } from "@/types/api";
 export class AdminApiError extends Error {
-    constructor(public readonly status: number, message: string) { super(message); }
+    constructor(public readonly status: number, message: string,public readonly code="REQUEST_FAILED") { super(message); }
 }
 export async function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
     try {
@@ -8,7 +8,7 @@ export async function adminRequest<T>(path: string, options: RequestInit = {}): 
         const envelope: ApiResponse<T> = await response.json();
         if (!response.ok || envelope.success !== true) {
             const message = response.status === 401 ? "Sesi berakhir. Silakan login kembali." : response.status === 403 ? "Akses ditolak atau token CSRF tidak valid. Muat ulang halaman." : envelope.success === false && typeof envelope.error?.message === "string" ? envelope.error.message : "Request gagal.";
-            throw new AdminApiError(response.status, message);
+            throw new AdminApiError(response.status, message,envelope.success===false?envelope.error?.code:"REQUEST_FAILED");
         }
         return envelope.data;
     }

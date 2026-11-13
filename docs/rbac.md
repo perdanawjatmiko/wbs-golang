@@ -30,3 +30,16 @@ POST/PATCH role menerima `permission_ids: UUID[]`, maksimal 200, unik. PATCH men
 - Last active Super Admin tidak dapat dihapus, dinonaktifkan, atau diturunkan role-nya. Test concurrent memastikan dua request bersamaan tidak dapat menonaktifkan keduanya.
 - Perubahan password/is_active merevoke session; role/permission dibaca ulang sehingga perubahan permission langsung berlaku di request berikutnya.
 - Referential conflicts dikembalikan sebagai 409. Tidak ada cascade yang menghilangkan historical business records.
+
+
+## Phase 3 report permission matrix
+
+| Capability | Permission |
+| --- | --- |
+| Report list/detail, type filter options | report.view |
+| Dashboard metrics/recent reports | report.view |
+| Private attachment download | report.view |
+| Status change/rejection/reactivation | report.update + CSRF |
+| Internal/external notes-only | report.update + CSRF |
+
+Permissions are independent. API writer-only roles cannot read report detail, contact, notes or attachment and receive only id/updated_at acknowledgment. UI detail page requires report.view; action controls additionally check report.update. No report-type permission hierarchy, ownership/assignment filtering or implicit master.manage override. Super Admin effective bypass remains. Actor is_active and permissions re-resolved after workflow locks; revoked/expired sessions rejected at request entry. Existing report.view/report.update seeds reused, no new permission names.

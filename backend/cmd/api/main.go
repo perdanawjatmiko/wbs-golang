@@ -51,6 +51,7 @@ func run() error {
 	}
 	defer files.Close()
 	reports.NewHandler(reports.NewService(reports.NewRepository(pool, zone, time.Now, reports.RandomPrefix), files, c.QueryTimeout, log), files, c.Reports, log).Register(r)
+	reports.NewAdminHandler(reports.NewAdminService(reports.NewRepository(pool, zone, time.Now, reports.RandomPrefix), files, c.QueryTimeout), a, zone, c.WriteTimeout, log).Register(r)
 	return httpserver.Run(ctx, httpserver.New(c, r), c.ShutdownTimeout)
 }
 func main() {

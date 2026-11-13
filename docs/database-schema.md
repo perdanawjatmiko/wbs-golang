@@ -57,3 +57,8 @@ Reports dan report_histories hanya schema persiapan. Tidak ada endpoint, generat
 000003_report_foundation adds report_code_counters(counter_date DATE PRIMARY KEY, last_sequence BIGINT NOT NULL CHECK>0, updated_at TIMESTAMPTZ DEFAULT now()), reports_active_contact_idx on (contact_type,contact) WHERE status NOT IN ('Done','Rejected'), and report_histories_timeline_idx on (report_id,created_at,id). Reports/report_histories schemas from Phase 1 are reused unchanged. Existing reports.code unique index handles tracking and collision guard; no redundant code index. attachment_url now holds an opaque private storage key, not a public/absolute URL. No binary/extra attachment table.
 
 Apply via existing `go run ./cmd/migrate up`. Down exists for disposable test schemas only and removes the added indexes/counter; never reset counters on a database retaining reports. There is no automatic rewriting of imported contact data. See report-submission.md for transaction, timezone, normalization and quota invariants.
+
+
+## Phase 3 reuse
+
+No migration added or existing migration modified. reports.updated_at is reused as an optimistic concurrency token, advancing by at least one microsecond on workflow/notes writes. report_histories.created_at equals that new server timestamp; status and history insert commit atomically. Existing active-contact partial index and history(report_id,created_at,id) index support shared quota locks and chronological pagination. No history update/delete API, extra status, assignment or infrastructure table. API guards rejection reason inside the workflow transaction; direct DB writes are outside API guarantees.

@@ -100,3 +100,5 @@ export function validateForm(resource: Resource, values: Record<string, FieldVal
     }
     return null;
 }
+
+export function hasPermission(user:User,permission:string):boolean{return user.role_name==="Super Admin"||user.permissions.includes(permission);}

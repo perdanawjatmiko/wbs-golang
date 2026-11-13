@@ -100,7 +100,7 @@ func (e *CommitError) Unwrap() error { return e.Cause }
 func (r *Repository) Track(ctx context.Context, code, kind, contact string) (Tracked, error) {
 	var result Tracked
 	var timeline []byte
-	err := r.pool.QueryRow(ctx, `SELECT r.code,r.name,rt.name,r.detail,r.status,r.created_at,r.updated_at,COALESCE((SELECT jsonb_agg(jsonb_build_object('new_status',h.new_status,'external_note',h.external_note,'created_at',h.created_at) ORDER BY h.created_at,h.id) FROM report_histories h WHERE h.report_id=r.id),'[]'::jsonb) FROM reports r JOIN report_types rt ON rt.id=r.report_type_id WHERE r.code=$1 AND r.contact_type=$2 AND r.contact=$3`, code, kind, contact).Scan(&result.ReportCode, &result.Name, &result.ReportType, &result.Detail, &result.Status, &result.CreatedAt, &result.UpdatedAt, &timeline)
+	err := r.pool.QueryRow(ctx, `SELECT r.code,r.name,rt.name,r.detail,r.status,r.created_at,r.updated_at,COALESCE((SELECT jsonb_agg(jsonb_build_object('new_status',h.new_status,'external_note',h.external_note,'created_at',h.created_at) ORDER BY h.created_at,h.id) FROM report_histories h WHERE h.report_id=r.id AND (h.old_status<>h.new_status OR btrim(h.external_note)<>'')),'[]'::jsonb) FROM reports r JOIN report_types rt ON rt.id=r.report_type_id WHERE r.code=$1 AND r.contact_type=$2 AND r.contact=$3`, code, kind, contact).Scan(&result.ReportCode, &result.Name, &result.ReportType, &result.Detail, &result.Status, &result.CreatedAt, &result.UpdatedAt, &timeline)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return result, NotFound()
 	}
@@ -110,7 +110,7 @@ func (r *Repository) Track(ctx context.Context, code, kind, contact string) (Tra
 	if err = json.Unmarshal(timeline, &result.Timeline); err != nil {
 		return result, err
 	}
-	if len(result.Timeline) == 0 || result.Timeline[0].NewStatus != "Open" {
+	if len(result.Timeline) == 0 || result.Timeline[0].NewStatus != "Open" || !result.Timeline[0].CreatedAt.Equal(result.CreatedAt) {
 		result.Timeline = append([]Event{{NewStatus: "Open", ExternalNote: "", CreatedAt: result.CreatedAt}}, result.Timeline...)
 	}
 	return result, nil

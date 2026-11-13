@@ -50,3 +50,7 @@ Phase 0 results above are historical. Current Phase 1 verification, all acceptan
 ## Phase 2 follow-up
 
 Current reporting/upload/tracking, concurrency results, regression evidence and all33 acceptance criteria are in [phase-2.md](phase-2.md). PostgreSQL-backed tests use isolated schemas; public/admin HTTP smoke uses a dedicated QA cluster and private temporary file storage. Historical Phase 0–1 results above remain unchanged.
+
+## Phase 3 follow-up
+
+Current workflow, lock/version/history invariants, concurrency/security scenarios and all42 acceptance criteria are in [phase-3.md](phase-3.md). Configured QA includes actual PostgreSQL regression across Phase0–3 and36 frontend tests with3 actual HTTP suites. No browser visual test or production load test is claimed.

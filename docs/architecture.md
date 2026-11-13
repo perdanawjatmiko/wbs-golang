@@ -48,3 +48,10 @@ Reports module adds public submission/tracking under existing modular monolith b
 Private staging and atomic publication precede DB commit; service distinguishes definite failure cleanup from ambiguous commit retention. Streaming multipart body handling only bypasses global buffered limit for exact public upload route; existing JSON/admin limits remain intact. PDF structural validator uses stateless/offline context and resource limits. Shared platform limiter preserves auth compatibility.
 
 Public Next adapter is independent of admin cookie adapter, finite allowlist, streaming byte limit/backpressure, no credential forwarding, no-store and no automatic retry. Landing/reporting/tracking share public layout; original connectivity remains /development. See [Phase 2](phase-2.md), [submission](report-submission.md), [tracking](report-tracking.md), [storage](file-storage.md) for decisions and limits.
+
+
+## Phase 3 administration
+
+Admin projections/workflow remain in reports module with handler/service/repository split and explicit filestore.Reader for authorized reads. No schema/dependency changes. Read snapshots use repeatable-read; mutation lock order is unlocked identity read -> contact transaction advisory lock -> report FOR UPDATE -> authoritative permission/version checks -> atomic status/version/history commit. Terminal reactivation shares Phase2 quota lock/hash/count rule.
+
+Optimistic expected_updated_at is mandatory for status/notes; monotonic microsecond version prevents duplicate stale history. Public projection omits unchanged-status internal-only histories and distinguishes later Open notes from creation. Admin dashboard uses fixed aggregate queries, lists/history paginate, adapter bounds responses and private streaming. See phase-3.md, report-workflow.md and report-history.md.
