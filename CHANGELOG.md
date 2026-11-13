@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-13 — Phase 2 public reporting and tracking
+
+- Additive counter/quota/timeline indexes; reuse reports/history tables without rewriting data.
+- Add canonical email/international-phone normalization, transactional advisory quota lock and atomic daily ticket codes with bounded collision retry.
+- Add bounded streaming multipart, private staged JPEG/PNG/PDF validation/storage and definite-failure cleanup/ambiguous-commit retention.
+- Add public code+contact tracking and external-only timeline, independent public rate limits and upload concurrency cap.
+- Add public landing/reporting/tracking/interactive FAQ and credential-free streaming Next adapter; retain connectivity at /development and admin routes.
+- Add PostgreSQL concurrency/security/rollback tests, frontend logic/rendering/HTTP smoke tests and Phase 2 documentation.
+- No admin workflow, status mutation UI, notifications, CAPTCHA or deployment. Blueprint unchanged.
+
 ## 2026-11-13 — Phase 1 administration
 
 - Tambah versioned SQL migrations untuk 9 tabel blueprint dan admin_sessions, serta CLI migration/seeding terpisah.

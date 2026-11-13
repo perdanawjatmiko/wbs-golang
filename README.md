@@ -1,6 +1,6 @@
 # WBS & Ticketing Application
 
-Phase 1: fondasi dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Workflow pelaporan dan notifikasi belum diimplementasikan.
+Phase 2: pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin serta notifikasi belum diimplementasikan.
 
 Stack: Go 1.26.2, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 
@@ -10,7 +10,7 @@ backend/
   internal/
     config/
     middleware/
-    modules/{auth,health,master}/
+    modules/{auth,health,master,reports}/
     platform/{database,httpserver,logger,migration,problem,response,security}/
     seed/
   migrations/
@@ -20,7 +20,7 @@ frontend/
   src/
     app/
     components/ui/
-    features/{admin,system}/
+    features/{admin,reports,system}/
     lib/{api,config}/
     types/
   .env.example
@@ -64,7 +64,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Buka http://localhost:3000. Halaman development menampilkan loading, status koneksi API, metadata aman, atau error jika backend tidak tersedia. Status koneksi API bukan indikator kesiapan database.
+Buka http://localhost:3000. Landing publik tersedia di `/`; halaman `/development` mempertahankan loading, status koneksi API, metadata aman, atau error jika backend tidak tersedia. Status koneksi API bukan indikator kesiapan database.
 
 ## PostgreSQL configuration
 
@@ -133,3 +133,14 @@ Initial roles: Super Admin dan Investigator. Initial permissions dan aksesnya te
 Schema sembilan tabel blueprint ditambah admin_sessions infrastruktur. Migration/seeder tidak otomatis dijalankan API. Lihat [database schema and migration commands](docs/database-schema.md), [bootstrap and auth flow](docs/authentication.md), serta [Phase 1 report](docs/phase-1.md) untuk file, keputusan teknis, hasil pengujian, acceptance criteria dan keterbatasan.
 
 Database integration Phase 1 opt-in: `TEST_PHASE1_DATABASE_URL=... go test -v ./tests` dari backend, hanya dedicated test DB. Suite membuat schema disposable dan menguji up/down di schema itu. Tidak menggunakan database development utama/production. HTTP smoke opt-in memerlukan TEST_WEB_BASE_URL dan test admin credentials; lihat [development](docs/development.md).
+
+
+## Phase 2 public reporting
+
+Routes: `/` landing/FAQ, `/lapor` submission dengan satu attachment opsional, `/tracking` code+contact; connectivity existing sekarang `/development`. Semua route admin tetap berjalan. Jalankan migrasi up terbaru dan buat jenis laporan aktif melalui admin sebelum mencoba form publik.
+
+Submission menggunakan advisory transaction lock per canonical contact, quota5 active reports dan daily atomic code counter. Kode WBS-DDMMYY-2RANDOM+SEQUENCE, timezone eksplisit Asia/Jakarta default. Attachment private (5MiB default JPEG/PNG/PDF), tidak tersedia melalui static/download URL. Tracking hanya mengembalikan summary dan external notes, tanpa internal/admin/contact/storage metadata.
+
+Tambahan env tersedia di contoh backend/frontend: APP_TIMEZONE, private UPLOAD_DIR, UPLOAD_MAX_FILE_BYTES/REQUEST_BYTES, UPLOAD_ALLOWED_TYPES/MAX_FILES, REPORT_UPLOAD_CONCURRENCY/REQUEST_TIMEOUT/SUBMIT_RATE_LIMIT/TRACK_RATE_LIMIT/RATE_WINDOW. UPLOAD_MAX_REQUEST_BYTES harus selaras di kedua server. Backend/var di-ignore.
+
+Dokumentasi lengkap: [Phase 2](docs/phase-2.md), [submission](docs/report-submission.md), [tracking](docs/report-tracking.md), [private storage](docs/file-storage.md). Hasil tests, acceptance criteria, concurrency evidence dan batasan operasional tercantum di Phase 2. Tidak ada fitur workflow Phase 3–5 atau deployment.

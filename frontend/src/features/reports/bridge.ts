@@ -1,0 +1,1 @@
+export function allowedPublicPath(parts: string[], method: string): boolean { return method === "GET" && ((parts.length === 1 && ["report-types", "faqs"].includes(parts[0])) || (parts.length === 2 && parts[0] === "reports" && parts[1] === "options")) || method === "POST" && parts[0] === "reports" && (parts.length === 1 || (parts.length === 2 && parts[1] === "track")); }

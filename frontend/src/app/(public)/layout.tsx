@@ -1,0 +1,4 @@
+import Link from "next/link";
+export default function PublicLayout({ children }: {
+    children: React.ReactNode;
+}) { return <><header className="border-b border-zinc-200 dark:border-zinc-800"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5"><Link className="text-xl font-bold tracking-tight" href="/">WBS<span className="ml-3 text-sm font-normal text-zinc-500">Whistleblowing System</span></Link><nav aria-label="Navigasi publik" className="flex gap-5 text-sm font-medium"><Link href="/lapor">Buat laporan</Link><Link href="/tracking">Tracking</Link></nav></div></header><main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 sm:py-16">{children}</main><footer className="border-t border-zinc-200 px-6 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800">WBS · Pelaporan dan penelusuran status</footer></>; }

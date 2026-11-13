@@ -70,6 +70,10 @@ func Security(production bool) gin.HandlerFunc {
 }
 func BodyLimit(limit int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Request.Method == "POST" && c.Request.URL.Path == "/api/v1/public/reports" {
+			c.Next()
+			return
+		}
 		if c.Request.ContentLength > limit {
 			response.Error(c, 413, "BODY_TOO_LARGE", "Ukuran request terlalu besar.")
 			return

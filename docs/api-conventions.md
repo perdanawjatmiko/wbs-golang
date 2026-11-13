@@ -58,3 +58,18 @@ Auth login/me data is `{user:{id,name,email,role_id,role_name,permissions},csrf_
 Phase 1 errors: INVALID_CREDENTIALS/UNAUTHENTICATED 401; FORBIDDEN/SELF_ROLE_CHANGE/CSRF_REJECTED 403; DUPLICATE/REFERENCE_CONFLICT/LAST_SUPER_ADMIN/PROTECTED_ROLE 409; VALIDATION_ERROR 422; JSON_REQUIRED 415; RATE_LIMITED 429. PostgreSQL FK 23503 and RESTRICT 23001 both map409. Internal details never included.
 
 Next.js browser adapter `/api/backend/...` only forwards approved Phase 1 paths/methods to Go. It does not expose reports workflows, accept arbitrary upstream URLs, forward arbitrary cookies/headers, or replace backend authorization. Adapter error uses the same envelope with BRIDGE_ERROR and a safe message.
+
+
+## Phase 2 public reports
+
+| Endpoint | Method | Contract |
+| --- | --- | --- |
+| /api/v1/public/reports | POST multipart | name/contact/contact_type/report_type_id/detail, attachment optional; 201 data={report_code,status,created_at,tracking_instructions} |
+| /api/v1/public/reports/track | POST JSON | report_code + contact; 200 matched public summary/timeline, otherwise generic404 REPORT_NOT_FOUND |
+| /api/v1/public/reports/options | GET | Non-sensitive technical upload limits/MIME allowlist, no storage path |
+
+No admin auth needed; public adapter never forwards admin credentials. All endpoints keep Phase 0 envelope, request IDs and no-store. Tracking response excludes contact, IDs, internal notes, admin metadata and attachment keys. Public timeline keys only new_status/external_note/created_at. Existing active public master APIs remain unchanged; UI merges general + selected FAQ by unique ID and sort_order/id.
+
+New errors: REPORT_ACTIVE_LIMIT_REACHED409 (max5), REPORT_NOT_FOUND404 (generic mismatch), INVALID_ATTACHMENT422, ATTACHMENT_TOO_LARGE413, MULTIPART_REQUIRED415, INVALID_MULTIPART400, UPLOAD_BUSY429, RATE_LIMITED429, REPORT_CODE_UNAVAILABLE503, SUBMISSION_UNCERTAIN503, plus VALIDATION_ERROR422/BODY_TOO_LARGE413/INTERNAL_ERROR500. No automatic replay on network or uncertain submission. Full examples: report-submission.md/report-tracking.md.
+
+Next public bridge `/api/public/...` only allows these reporting endpoints and existing public master GETs, has its own streaming body ceiling and timeout, never forwards Cookie/Authorization or sensitive POST query params, and returns no-store/private. GET tracking is not available.

@@ -1,0 +1,2 @@
+import { ReportForm } from "@/features/reports/report-form";
+export default function ReportPage() { return <><header className="mb-10 max-w-2xl"><h1 className="text-3xl font-semibold sm:text-4xl">Buat laporan</h1><p className="mt-4 leading-7 text-zinc-600 dark:text-zinc-300">Isi informasi dengan jelas. Satu contact dapat memiliki maksimal 5 laporan aktif. Simpan kode yang diberikan setelah pengiriman berhasil.</p></header><ReportForm /></>; }

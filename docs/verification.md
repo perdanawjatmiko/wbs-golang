@@ -46,3 +46,7 @@ Test harness mengompilasi TypeScript menggunakan dependency TypeScript existing 
 ## Phase 1 follow-up
 
 Phase 0 results above are historical. Current Phase 1 verification, all acceptance criteria, test environment, opt-in integration commands and known limits are recorded in [phase-1.md](phase-1.md). Phase 0 endpoints and foundation remain present; credentialed CORS and the explicit Next.js cookie adapter are intentional Phase 1 extensions.
+
+## Phase 2 follow-up
+
+Current reporting/upload/tracking, concurrency results, regression evidence and all33 acceptance criteria are in [phase-2.md](phase-2.md). PostgreSQL-backed tests use isolated schemas; public/admin HTTP smoke uses a dedicated QA cluster and private temporary file storage. Historical Phase 0–1 results above remain unchanged.

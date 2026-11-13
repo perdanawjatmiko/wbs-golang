@@ -39,3 +39,12 @@ UUID/PostgreSQL-native IDs, explicit embedded golang-migrate SQL and separate id
 Server-side HttpOnly cookie sessions use bcrypt cost 12 and SHA-256 hashes of 256-bit random session tokens. DB-driven RBAC resolves every request and transaction. Security administration is Super Admin-only. Formatting-only email HTML sanitation uses bluemonday; preview runs in an opaque sandbox iframe with network/script-denying CSP. No messages are sent.
 
 Next.js remains App Router/Server Components by default. Interactive forms are Client Components; protected pages/layout resolve auth from Go. A finite route allowlist adapter is necessary to keep local browser cookies same-origin and forward Go Set-Cookie securely. It has no independent identity store or authorization logic. No global state library, UI dependency, Cache Components or JWT/localStorage added.
+
+
+## Phase 2 additions
+
+Reports module adds public submission/tracking under existing modular monolith boundaries. Contact quota uses deterministic SHA-256-derived transaction-level PostgreSQL advisory lock, atomic daily counter UPSERT and insert in the same transaction. Report type shared row lock prevents concurrent deactivation races. DTOs explicitly select public fields and exclude contact/internal/admin/storage metadata. Virtual initial timeline event avoids Phase 2 history workflow.
+
+Private staging and atomic publication precede DB commit; service distinguishes definite failure cleanup from ambiguous commit retention. Streaming multipart body handling only bypasses global buffered limit for exact public upload route; existing JSON/admin limits remain intact. PDF structural validator uses stateless/offline context and resource limits. Shared platform limiter preserves auth compatibility.
+
+Public Next adapter is independent of admin cookie adapter, finite allowlist, streaming byte limit/backpressure, no credential forwarding, no-store and no automatic retry. Landing/reporting/tracking share public layout; original connectivity remains /development. See [Phase 2](phase-2.md), [submission](report-submission.md), [tracking](report-tracking.md), [storage](file-storage.md) for decisions and limits.

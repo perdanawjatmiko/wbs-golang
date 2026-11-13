@@ -8,3 +8,6 @@
 .DS_Store
 backend/bin/
 backend/coverage.out
+
+# Private report attachments
+backend/var/

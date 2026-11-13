@@ -54,3 +54,14 @@ npm run build
 HTTP smoke test opt-in requires running Go/Next against dedicated test DB with a test Super Admin: set TEST_WEB_BASE_URL, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD, then `node --test tests/admin-http.test.mjs`. Test creates/updates/deletes one disposable report type via admin API. Without these variables it explicitly skips. Regular tests use node:test + existing TypeScript, no added frontend dependency.
 
 Troubleshooting: 401 berarti login/session/inactive state; 403 berarti permission/Origin/CSRF mismatch; 409 berarti duplicate/reference/protected Super Admin. Missing schema: run migrations explicitly. Duplicate/referenced user: deactivate, do not purge sessions/historical rows merely to force deletion. Origin includes scheme/host/port and excludes trailing slash. Logout or password change invalidates current session, requiring login again. Login 429: wait fixed 15-minute window; do not weaken protections to bypass tests.
+
+
+## Phase 2 public workflow
+
+Apply migration up, start Go, use existing admin UI to create active report types/FAQs, then open /lapor. Landing at / now shows public CTAs/general FAQ; original connectivity moved to /development. Tracking at /tracking uses code+same contact with no URL query or persistent storage.
+
+Use explicit APP_TIMEZONE=Asia/Jakarta and private UPLOAD_DIR (default backend/var/private/attachments when running from backend). Directories must be0700 and files0600; never serve the upload directory. UPLOAD_MAX_REQUEST_BYTES must match between Go and Next server config. Default file5MiB/request6MiB; do not simply raise global HTTP_MAX_BODY_BYTES for attachment handling. See file-storage.md for validation and crash reconciliation.
+
+DB integration: set TEST_PHASE2_DATABASE_URL to dedicated test PostgreSQL, then `go test -v ./tests -run Phase2`. For full regression also set TEST_PHASE1_DATABASE_URL. Suites generate disposable schemas; main dev/production data is never targeted. HTTP public smoke opts in with TEST_PUBLIC_WEB_BASE_URL and requires a seeded active QA report type; it creates real reports and must run only on QA. See phase-2.md.
+
+Troubleshooting: 409 quota counts only non-Done/non-Rejected reports for exact canonical contact; do not delete/reset counters to bypass it. 422 attachment: verify true format, extension, MIME and valid structure; strict PDF validator may reject nonconforming files. 429: wait window/upload slots, remember adapter-IP sharing. 503 SUBMISSION_UNCERTAIN or network timeout: do not automatically resend; code may already have been committed. Stage/final orphans require conservative operator reconciliation, not blind deletion.

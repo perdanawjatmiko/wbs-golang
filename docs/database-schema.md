@@ -50,3 +50,10 @@ Tidak ada down terhadap database existing pada pekerjaan ini. Automated tests me
 PATCH memperbarui updated_at untuk tabel yang memilikinya. Data yang masih direferensikan ditolak 409; gunakan is_active=false pada users/report-types/faqs. Role assignment harus dihapus eksplisit melalui PATCH permission_ids sebelum role tanpa users dapat dihapus. Permission yang masih diassign juga 409. Session historis dapat membuat DELETE user konflik; deactivate adalah pilihan aman. Penghapusan/purge session bukan fitur admin Phase 1.
 
 Reports dan report_histories hanya schema persiapan. Tidak ada endpoint, generator code, quota check, submission atau status workflow.
+
+
+## Phase 2 additive migration
+
+000003_report_foundation adds report_code_counters(counter_date DATE PRIMARY KEY, last_sequence BIGINT NOT NULL CHECK>0, updated_at TIMESTAMPTZ DEFAULT now()), reports_active_contact_idx on (contact_type,contact) WHERE status NOT IN ('Done','Rejected'), and report_histories_timeline_idx on (report_id,created_at,id). Reports/report_histories schemas from Phase 1 are reused unchanged. Existing reports.code unique index handles tracking and collision guard; no redundant code index. attachment_url now holds an opaque private storage key, not a public/absolute URL. No binary/extra attachment table.
+
+Apply via existing `go run ./cmd/migrate up`. Down exists for disposable test schemas only and removes the added indexes/counter; never reset counters on a database retaining reports. There is no automatic rewriting of imported contact data. See report-submission.md for transaction, timezone, normalization and quota invariants.
