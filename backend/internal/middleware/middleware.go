@@ -105,25 +105,26 @@ func CORS(origins []string) gin.HandlerFunc {
 				return
 			}
 			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.Header("Access-Control-Expose-Headers", "X-Request-ID")
 		}
 		if c.Request.Method == http.MethodOptions && c.GetHeader("Access-Control-Request-Method") != "" {
 			c.Writer.Header().Add("Vary", "Access-Control-Request-Method")
 			c.Writer.Header().Add("Vary", "Access-Control-Request-Headers")
 			method := c.GetHeader("Access-Control-Request-Method")
-			if method != "GET" && method != "HEAD" && method != "OPTIONS" {
+			if method != "GET" && method != "HEAD" && method != "OPTIONS" && method != "POST" && method != "PATCH" && method != "DELETE" {
 				response.Error(c, 405, "METHOD_NOT_ALLOWED", "Metode tidak diizinkan.")
 				return
 			}
 			for _, h := range strings.Split(c.GetHeader("Access-Control-Request-Headers"), ",") {
 				h = strings.ToLower(strings.TrimSpace(h))
-				if h != "" && h != "content-type" && h != "x-request-id" {
+				if h != "" && h != "content-type" && h != "x-request-id" && h != "x-csrf-token" {
 					response.Error(c, 403, "HEADER_FORBIDDEN", "Header tidak diizinkan.")
 					return
 				}
 			}
-			c.Header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
+			c.Header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS, POST, PATCH, DELETE")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, X-Request-ID, X-CSRF-Token")
 			c.AbortWithStatus(204)
 			return
 		}

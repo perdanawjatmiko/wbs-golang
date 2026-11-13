@@ -1,0 +1,11 @@
+BEGIN;
+DROP TABLE report_histories;
+DROP TABLE reports;
+DROP TABLE email_templates;
+DROP TABLE faqs;
+DROP TABLE report_types;
+DROP TABLE admin_users;
+DROP TABLE role_permissions;
+DROP TABLE permissions;
+DROP TABLE roles;
+COMMIT;

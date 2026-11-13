@@ -89,7 +89,7 @@ func TestRequestIDAndCORS(t *testing.T) {
 	for _, tt := range []struct {
 		origin, method, headers string
 		code                    int
-	}{{"http://localhost:3000", "GET", "X-Request-ID", 204}, {"https://evil.example", "GET", "", 403}, {"http://localhost:3000", "DELETE", "", 405}, {"http://localhost:3000", "GET", "Authorization", 403}} {
+	}{{"http://localhost:3000", "GET", "X-Request-ID", 204}, {"https://evil.example", "GET", "", 403}, {"http://localhost:3000", "TRACE", "", 405}, {"http://localhost:3000", "GET", "Authorization", 403}} {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("OPTIONS", "/api/v1/system/info", nil)
 		req.Header.Set("Origin", tt.origin)

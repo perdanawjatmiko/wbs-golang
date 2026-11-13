@@ -10,5 +10,10 @@ export function serverConfig() {
     throw new Error("API_BASE_URL must be an HTTP origin without credentials or paths");
   }
   // HTTP is permitted for local or private server-to-server development connections.
-  return { appName, apiBaseURL: url.origin, apiTimeoutMs: 5000 };
+  const appOriginRaw = process.env.APP_ORIGIN ?? "http://localhost:3000";
+ let appOrigin: URL;
+ try { appOrigin = new URL(appOriginRaw); } catch { throw new Error("APP_ORIGIN must be an HTTP origin"); }
+ if (!["http:", "https:"].includes(appOrigin.protocol) || appOrigin.origin !== appOriginRaw || appOrigin.username || appOrigin.password) throw new Error("APP_ORIGIN must be an HTTP origin without path or credentials");
+ if (process.env.NODE_ENV === "production" && process.env.APP_ORIGIN && appOrigin.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(appOrigin.hostname)) throw new Error("Public production APP_ORIGIN requires HTTPS");
+ return { appName, apiBaseURL: url.origin, apiTimeoutMs: 5000, appOrigin: appOrigin.origin };
 }

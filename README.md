@@ -1,23 +1,26 @@
 # WBS & Ticketing Application
 
-Fondasi Phase 0 untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Belum ada authentication, tabel bisnis, pelaporan, dashboard, atau notifikasi.
+Phase 1: fondasi dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Workflow pelaporan dan notifikasi belum diimplementasikan.
 
 Stack: Go 1.26.2, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 
 ```text
 backend/
-  cmd/api/main.go
+  cmd/{api,migrate,seed}/main.go
   internal/
     config/
     middleware/
-    modules/health/
-    platform/{database,httpserver,logger,response}/
+    modules/{auth,health,master}/
+    platform/{database,httpserver,logger,migration,problem,response,security}/
+    seed/
+  migrations/
+  tests/
   .env.example
 frontend/
   src/
     app/
     components/ui/
-    features/system/
+    features/{admin,system}/
     lib/{api,config}/
     types/
   .env.example
@@ -42,6 +45,9 @@ cp .env.example .env
 set -a
 source .env
 set +a
+go run ./cmd/migrate up
+go run ./cmd/seed
+# Bootstrap Super Admin: export ADMIN_SEED_EMAIL/PASSWORD/NAME secara aman, lalu ulangi seed.
 go run ./cmd/api
 ```
 
@@ -96,7 +102,7 @@ TEST_DATABASE_URL='postgres://USER:PASSWORD@127.0.0.1:5432/wbs_test?sslmode=disa
 
 ```sh
 cd frontend
-node --test tests/api-client.test.mjs
+node --test tests/*.test.mjs
 npm run lint
 npx tsc --noEmit
 npm run build
@@ -114,3 +120,16 @@ Tanpa `TEST_DATABASE_URL`, integration test database secara eksplisit SKIP. Unit
 - Bind port gagal di sandbox: jalankan verifikasi lifecycle pada environment yang mengizinkan loopback.
 
 Lihat [architecture](docs/architecture.md), [development](docs/development.md), dan [API conventions](docs/api-conventions.md). Changelog mencatat scope perubahan.
+
+
+## Phase 1 administration
+
+Buka `/admin/login` setelah bootstrap. Routes: /admin, /admin/users, /admin/roles, /admin/permissions, /admin/report-types, /admin/faqs, /admin/email-templates. Tidak ada report management UI.
+
+Tambahan environment backend: DB_QUERY_TIMEOUT=5s, SESSION_TTL=8h, ADMIN_SEED_EMAIL/PASSWORD/NAME (CLI bootstrap saja). Frontend: APP_ORIGIN=http://localhost:3000 harus sama dengan browser origin dan terdaftar pada CORS_ALLOWED_ORIGINS backend. API_BASE_URL tetap server-only. Cookie HttpOnly dikelola Go dan diteruskan melalui adapter Next.js terbatas; tidak ada token localStorage.
+
+Initial roles: Super Admin dan Investigator. Initial permissions dan aksesnya tersedia pada [RBAC matrix](docs/rbac.md). Investigator default deny sampai diassign permission. Seeder idempotent; tidak overwrite password/email existing dan tidak membuat default credential publik. Password 12–72 byte. Jangan commit bootstrap secrets.
+
+Schema sembilan tabel blueprint ditambah admin_sessions infrastruktur. Migration/seeder tidak otomatis dijalankan API. Lihat [database schema and migration commands](docs/database-schema.md), [bootstrap and auth flow](docs/authentication.md), serta [Phase 1 report](docs/phase-1.md) untuk file, keputusan teknis, hasil pengujian, acceptance criteria dan keterbatasan.
+
+Database integration Phase 1 opt-in: `TEST_PHASE1_DATABASE_URL=... go test -v ./tests` dari backend, hanya dedicated test DB. Suite membuat schema disposable dan menguji up/down di schema itu. Tidak menggunakan database development utama/production. HTTP smoke opt-in memerlukan TEST_WEB_BASE_URL dan test admin credentials; lihat [development](docs/development.md).

@@ -42,3 +42,7 @@ Test harness mengompilasi TypeScript menggunakan dependency TypeScript existing 
 - DB_MAX_IDLE_CONNS adalah warm idle target pgxpool, bukan batas maksimum idle; lihat architecture.md.
 - Build font existing membutuhkan jaringan; pipeline offline perlu keputusan self-host font di pekerjaan terpisah.
 - Production deployment/TLS termination, business migrations dan authentication berada di fase berikutnya.
+
+## Phase 1 follow-up
+
+Phase 0 results above are historical. Current Phase 1 verification, all acceptance criteria, test environment, opt-in integration commands and known limits are recorded in [phase-1.md](phase-1.md). Phase 0 endpoints and foundation remain present; credentialed CORS and the explicit Next.js cookie adapter are intentional Phase 1 extensions.

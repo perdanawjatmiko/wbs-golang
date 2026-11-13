@@ -4,7 +4,7 @@ Ikuti setup di README. File `.env` backend harus diekspor manual; Next.js memuat
 
 Frontend config: NEXT_PUBLIC_APP_NAME=WBS, API_BASE_URL=http://127.0.0.1:8080. API_BASE_URL harus HTTP(S) origin tanpa credential/path/query/fragment. Config dibaca saat server render dan divalidasi. Default local tersedia untuk development/build. Timeout client API 5000ms. Pada production server-to-server, pilih HTTPS bila melewati jaringan yang tidak tepercaya.
 
-Server-side fetch terjadi dari proses Next.js ke Go, sehingga browser tidak perlu mengetahui alamat Go dan CORS browser tidak berlaku pada koneksi ini. Browser-side fetch baru memerlukan `NEXT_PUBLIC_API_BASE_URL` eksplisit (belum digunakan), dapat mengekspos alamat API publik, dan harus sesuai CORS allowlist. CORS tidak menggantikan authentication/CSRF. Tidak ada proxy API tambahan.
+Server-side fetch terjadi dari proses Next.js ke Go, sehingga browser tidak perlu mengetahui alamat Go dan CORS browser tidak berlaku pada koneksi ini. Browser-side fetch baru memerlukan `NEXT_PUBLIC_API_BASE_URL` eksplisit (belum digunakan), dapat mengekspos alamat API publik, dan harus sesuai CORS allowlist. CORS tidak menggantikan authentication/CSRF. Phase 0 connectivity tetap langsung server-side. Phase 1 menambahkan adapter cookie terbatas untuk browser admin; lihat authentication.md.
 
 Verifikasi manual integrasi:
 
@@ -17,3 +17,40 @@ Verifikasi manual integrasi:
 Jangan menghentikan database bersama/production untuk pengujian. Gunakan instance terisolasi. Integration test membaca TEST_DATABASE_URL dan hanya ping; tidak menyiapkan schema, membuat database, migrasi atau menghapus data. Unit test tanpa PostgreSQL tetap dapat berjalan. Test lifecycle membuka loopback ephemeral dan membutuhkan environment yang mendukung bind. Race detector memerlukan toolchain/C compiler yang sesuai.
 
 Rekomendasi sebelum Phase 1: siapkan dedicated local/test DB dan CI dengan PostgreSQL service terisolasi, simpan secret melalui mekanisme environment CI, tetapkan strategi migrasi dan kontrak auth/RBAC berdasarkan blueprint. Tidak ada deployment di Phase 0.
+
+
+## Phase 1 local workflow
+
+Setelah export backend .env dan siapkan database lokal yang sudah diprovisikan:
+
+```sh
+cd backend
+go run ./cmd/migrate up
+go run ./cmd/seed
+# Untuk initial Super Admin, export ADMIN_SEED_EMAIL/PASSWORD/NAME secara aman lalu ulangi seed.
+go run ./cmd/api
+```
+
+Frontend .env.local: API_BASE_URL=http://127.0.0.1:8080, APP_ORIGIN=http://localhost:3000. Backend CORS_ALLOWED_ORIGINS harus memuat http://localhost:3000. Akses browser melalui localhost:3000 konsisten, lalu /admin/login. Seed tidak membuat admin jika bootstrap environment kosong. Jangan hardcode/password default.
+
+```sh
+cd backend
+go fmt ./...
+go vet ./...
+go test ./...
+go test -race ./...
+# Dedicated test DB only; suite creates and drops a generated disposable schema.
+TEST_PHASE1_DATABASE_URL='postgres://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/wbs_test?sslmode=disable' go test -v ./tests
+```
+
+```sh
+cd frontend
+node --test tests/*.test.mjs
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+HTTP smoke test opt-in requires running Go/Next against dedicated test DB with a test Super Admin: set TEST_WEB_BASE_URL, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD, then `node --test tests/admin-http.test.mjs`. Test creates/updates/deletes one disposable report type via admin API. Without these variables it explicitly skips. Regular tests use node:test + existing TypeScript, no added frontend dependency.
+
+Troubleshooting: 401 berarti login/session/inactive state; 403 berarti permission/Origin/CSRF mismatch; 409 berarti duplicate/reference/protected Super Admin. Missing schema: run migrations explicitly. Duplicate/referenced user: deactivate, do not purge sessions/historical rows merely to force deletion. Origin includes scheme/host/port and excludes trailing slash. Logout or password change invalidates current session, requiring login again. Login 429: wait fixed 15-minute window; do not weaken protections to bypass tests.

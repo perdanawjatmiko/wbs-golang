@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 	"wbs-golang/backend/internal/config"
+	"wbs-golang/backend/internal/modules/auth"
 	"wbs-golang/backend/internal/modules/health"
+	"wbs-golang/backend/internal/modules/master"
 	"wbs-golang/backend/internal/platform/database"
 	"wbs-golang/backend/internal/platform/httpserver"
 	"wbs-golang/backend/internal/platform/logger"
@@ -31,7 +33,11 @@ func run() error {
 	defer pool.Close()
 	h := health.NewHandler(health.NewService(pool, c.ReadyTimeout), log, c.AppName, c.Env, version)
 	log.Info("starting HTTP server", "app", c.AppName, "version", version)
-	return httpserver.Run(ctx, httpserver.New(c, httpserver.Router(c, log, h)), c.ShutdownTimeout)
+	r := httpserver.Router(c, log, h)
+	a := auth.NewHandler(auth.NewService(auth.NewRepository(pool), c.SessionTTL, c.QueryTimeout), log, c.Env == "production", c.SessionTTL, c.Origins)
+	a.Register(r)
+	master.NewHandler(master.NewService(master.NewRepository(pool), c.QueryTimeout), a).Register(r)
+	return httpserver.Run(ctx, httpserver.New(c, r), c.ShutdownTimeout)
 }
 func main() {
 	if err := run(); err != nil {

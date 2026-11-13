@@ -17,6 +17,7 @@ type Config struct {
 	Lifetime, IdleTime, ConnectTimeout, ReadyTimeout        time.Duration
 	ReadTimeout, WriteTimeout, IdleTimeout, ShutdownTimeout time.Duration
 	BodyLimit                                               int64
+	SessionTTL, QueryTimeout                                time.Duration
 }
 
 func Load() (Config, error) { return Parse(os.Getenv) }
@@ -68,7 +69,7 @@ func Parse(get func(string) string) (Config, error) {
 		k, d string
 		p    *time.Duration
 	}{
-		{"DB_CONN_MAX_LIFETIME", "30m", &c.Lifetime}, {"DB_CONN_MAX_IDLE_TIME", "5m", &c.IdleTime}, {"DB_CONNECT_TIMEOUT", "5s", &c.ConnectTimeout}, {"DB_READY_TIMEOUT", "2s", &c.ReadyTimeout},
+		{"SESSION_TTL", "8h", &c.SessionTTL}, {"DB_QUERY_TIMEOUT", "5s", &c.QueryTimeout}, {"DB_CONN_MAX_LIFETIME", "30m", &c.Lifetime}, {"DB_CONN_MAX_IDLE_TIME", "5m", &c.IdleTime}, {"DB_CONNECT_TIMEOUT", "5s", &c.ConnectTimeout}, {"DB_READY_TIMEOUT", "2s", &c.ReadyTimeout},
 		{"HTTP_READ_TIMEOUT", "10s", &c.ReadTimeout}, {"HTTP_WRITE_TIMEOUT", "15s", &c.WriteTimeout}, {"HTTP_IDLE_TIMEOUT", "60s", &c.IdleTimeout}, {"HTTP_SHUTDOWN_TIMEOUT", "15s", &c.ShutdownTimeout},
 	} {
 		v, err := time.ParseDuration(value(item.k, item.d))
@@ -93,6 +94,12 @@ func Parse(get func(string) string) (Config, error) {
 	c.BodyLimit, e = strconv.ParseInt(value("HTTP_MAX_BODY_BYTES", "1048576"), 10, 64)
 	if e != nil || c.BodyLimit < 1 {
 		return c, fmt.Errorf("HTTP_MAX_BODY_BYTES must be positive")
+	}
+	if c.SessionTTL < time.Minute || c.SessionTTL > 24*time.Hour {
+		return c, fmt.Errorf("SESSION_TTL must be between 1m and 24h")
+	}
+	if c.QueryTimeout >= c.WriteTimeout {
+		return c, fmt.Errorf("DB_QUERY_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
 	}
 	if c.ReadyTimeout >= c.WriteTimeout {
 		return c, fmt.Errorf("DB_READY_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
