@@ -1,0 +1,11 @@
+# SMTP integration
+
+SMTP is disabled by default. Configure SMTP_ENABLED, HOST, PORT(default587), USERNAME/PASSWORD together, FROM_ADDRESS, FROM_NAME(defaultWBS), TLS_MODE(starttls or implicit), TIMEOUT(default15s). Credentials only in private environment/secret management, never NEXT_PUBLIC variables or source control. Export environment before launching API and worker; `.env.example` is documentation, not an automatic loader.
+
+STARTTLS is mandatory in starttls mode; absence of the extension fails without downgrade. Implicit mode establishes verified TLS before SMTP greeting (configure the provider's implicit TLS port, commonly465). Both verify hostname/trust chain and require TLS1.2+. System trusted roots are used; no insecure verification override exists in environment. Sender and recipient are parsed/validated. Credentials are sent only after TLS. Network dial, negotiation and DATA obey bounded deadline/context cancellation.
+
+Only contact_type=EMAIL creates email deliveries. PHONE has no SMTP destination and introduces no SMS/WhatsApp integration. Worker reads the event's DB email_templates row at dispatch time: editing a template affects pending/retried messages. Missing template is a safe configuration failure, not a report failure.
+
+Renderer supports literal allowlisted slots report_code, user_name, status, external_note, including optional whitespace inside braces. No template language execution. report_code is required in subject or body; REPORT_REJECTED also requires external_note. Formatting-only HTML sanitation removes URL/style/script/event attributes; replacements are HTML-escaped in body. Rendered subject rejects CR/LF/NUL and excessive length. MIME headers use encoded words, HTML body base64, and a stable delivery UUID Message-ID. Reporter identity and external_note may appear, never internal notes, report detail or attachments.
+
+SMTP DATA acceptance is recorded as provider success even if QUIT later fails. Timeouts around DATA acceptance can be ambiguous: the stable Message-ID helps deduplication but does not guarantee it. At-least-once processing is the contract. Automated tests use a local TLS SMTP server with a trusted fixture certificate for both modes; no real mail is sent.

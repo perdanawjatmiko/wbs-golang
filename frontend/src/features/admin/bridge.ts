@@ -21,6 +21,20 @@ export function bridgePath(parts: string[], method: string): string | null {
         }
         return null;
     }
+    if(parts[0]==="admin" && parts[1]==="notifications") {
+        if(parts.length===2 && method==="GET") return parts.join("/");
+        if(parts.length===3 && ((["unread-count","stream"].includes(parts[2]) && method==="GET") || (parts[2]==="read-all" && method==="POST"))) return parts.join("/");
+        if(parts.length===4 && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(parts[2]) && parts[3]==="read" && method==="POST") return parts.join("/");
+        return null;
+    }
+    if(parts[0]==="admin" && parts[1]==="notification-deliveries") {
+        if(parts.length===2 && method==="GET") return parts.join("/");
+        if(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(parts[2]??"")) {
+            if(parts.length===3 && method==="GET") return parts.join("/");
+            if(parts.length===4 && parts[3]==="retry" && method==="POST") return parts.join("/");
+        }
+        return null;
+    }
     const resources = ["users", "roles", "permissions", "report-types", "faqs", "email-templates"];
     if (parts[0] !== "admin" || !resources.includes(parts[1]))
         return null;

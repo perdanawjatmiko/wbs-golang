@@ -8,19 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
+	"wbs-golang/backend/internal/modules/notifications"
 	"wbs-golang/backend/internal/platform/problem"
 )
 
 type Repository struct {
-	pool   *pgxpool.Pool
-	zone   *time.Location
-	now    func() time.Time
-	prefix func() (string, error)
+	pool        *pgxpool.Pool
+	zone        *time.Location
+	now         func() time.Time
+	prefix      func() (string, error)
+	maxAttempts int
 }
 
 func NewRepository(pool *pgxpool.Pool, zone *time.Location, now func() time.Time, prefix func() (string, error)) *Repository {
-	return &Repository{pool, zone, now, prefix}
+	return &Repository{pool, zone, now, prefix, 5}
 }
+
+func (r *Repository) NotificationAttempts(n int) *Repository { r.maxAttempts = n; return r }
 
 // Insert owns one transaction: contact lock -> quota -> active type lock -> counter -> report -> publish -> commit.
 func (r *Repository) Insert(ctx context.Context, input Submission, attachment *string, publish func() error) (Created, error) {
@@ -67,12 +71,15 @@ func (r *Repository) Insert(ctx context.Context, input Submission, attachment *s
 			return Created{}, err
 		}
 		result := Created{ReportCode: code, Status: "Open", CreatedAt: created, TrackingInstructions: "Simpan kode laporan. Gunakan kode dan contact yang sama pada halaman tracking."}
-		var saved string
-		err = tx.QueryRow(ctx, `INSERT INTO reports(code,name,contact,contact_type,report_type_id,detail,attachment_url,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,'Open',$8,$8) ON CONFLICT(code) DO NOTHING RETURNING code,created_at`, code, input.Name, input.Contact, input.ContactType, input.ReportTypeID, input.Detail, attachment, created).Scan(&saved, &result.CreatedAt)
+		var saved, reportID string
+		err = tx.QueryRow(ctx, `INSERT INTO reports(code,name,contact,contact_type,report_type_id,detail,attachment_url,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,'Open',$8,$8) ON CONFLICT(code) DO NOTHING RETURNING code,created_at,id::text`, code, input.Name, input.Contact, input.ContactType, input.ReportTypeID, input.Detail, attachment, created).Scan(&saved, &result.CreatedAt, &reportID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
 		if err != nil {
+			return Created{}, err
+		}
+		if err = notifications.Record(ctx, tx, reportID, "REPORT_CREATED", "report.created", "Open", "", r.maxAttempts); err != nil {
 			return Created{}, err
 		}
 		if publish != nil {

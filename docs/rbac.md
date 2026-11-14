@@ -43,3 +43,7 @@ POST/PATCH role menerima `permission_ids: UUID[]`, maksimal 200, unik. PATCH men
 | Internal/external notes-only | report.update + CSRF |
 
 Permissions are independent. API writer-only roles cannot read report detail, contact, notes or attachment and receive only id/updated_at acknowledgment. UI detail page requires report.view; action controls additionally check report.update. No report-type permission hierarchy, ownership/assignment filtering or implicit master.manage override. Super Admin effective bypass remains. Actor is_active and permissions re-resolved after workflow locks; revoked/expired sessions rejected at request entry. Existing report.view/report.update seeds reused, no new permission names.
+
+## Phase4 permissions
+
+report.view: own inbox/list/unread/read/read-all/SSE, with live session and current DB permission checks. notifications.manage: delivery list/detail/metrics/manual retry. Seed grants this only to Super Admin by default; existing role management may explicitly delegate. Investigators do not receive it automatically. Retry also requires CSRF and an available bounded attempt; inbox read always constrains current admin_id. SSE rechecks authorization each batch and stops on revocation/inactivity/session expiry.

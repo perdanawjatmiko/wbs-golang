@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-14 — Phase 4 multi-channel notifications
+
+- Add transactional outbox, durable realtime events, per-admin inbox, deduplicated deliveries and audited bounded manual retry through additive migration000004.
+- Integrate report/status commits without external calls or changes to quota/version/history/privacy invariants.
+- Add dedicated PostgreSQL worker with SKIP LOCKED, expiring token-owned claims, recovery, bounded retry/jitter and graceful shutdown.
+- Add verified SMTP with safe DB templates and fixed HTTPS Telegram client with429 handling; disabled channels remain pending.
+- Add report.view-protected durable SSE/inbox, notifications.manage monitoring, Next notification bell/monitoring and secure incremental adapter.
+- Add local-provider, PostgreSQL failure/concurrency/security and actual Go–Next HTTP tests; no real delivery or Phase5 deployment.
+
+
 ## 2026-11-13 — Phase 3 admin workflow and ticket management
 
 - Add report.view-protected list/detail/dashboard/options and authorized bounded private attachment streaming.

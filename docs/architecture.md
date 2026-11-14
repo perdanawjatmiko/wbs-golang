@@ -55,3 +55,7 @@ Public Next adapter is independent of admin cookie adapter, finite allowlist, st
 Admin projections/workflow remain in reports module with handler/service/repository split and explicit filestore.Reader for authorized reads. No schema/dependency changes. Read snapshots use repeatable-read; mutation lock order is unlocked identity read -> contact transaction advisory lock -> report FOR UPDATE -> authoritative permission/version checks -> atomic status/version/history commit. Terminal reactivation shares Phase2 quota lock/hash/count rule.
 
 Optimistic expected_updated_at is mandatory for status/notes; monotonic microsecond version prevents duplicate stale history. Public projection omits unchanged-status internal-only histories and distinguishes later Open notes from creation. Admin dashboard uses fixed aggregate queries, lists/history paginate, adapter bounds responses and private streaming. See phase-3.md, report-workflow.md and report-history.md.
+
+## Phase4
+
+Transactional notification writer/fanout shares report/history commits; worker performs provider I/O after atomic leased claims. Durable PostgreSQL realtime records drive per-admin authorized SSE and inbox. See [notification architecture](notification-architecture.md) for lock ordering, snapshot/versioning and technical decisions; [Phase4](phase-4.md) for implementation inventory. Existing API/master/report architecture remains intact.

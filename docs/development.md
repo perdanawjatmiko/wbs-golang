@@ -74,3 +74,9 @@ Grant report.view for list/detail/dashboard/attachment and report.update for sta
 Enable TEST_PHASE3_DATABASE_URL alongside previous regression flags for real isolated workflow/quota/history tests. Test suite creates random schema and injects history failure only there. HTTP suite uses TEST_ADMIN_WORKFLOW_WEB_BASE_URL with existing test admin credentials, against QA only; it creates real fixture reports/accounts/history. See phase-3.md for commands/evidence.
 
 Attachment access always goes through protected /api/backend/admin/reports/:id/attachment (browser) -> Go authorized route; never expose upload root. Missing file404 is safe; preview metadata available=false. Query/history caps,15s adapter timeout and current upload ceilings bound transfers. Next dev incoming logs disabled to keep authorized contact search out of terminal; do not enable full query/body/cookie logging.
+
+## Phase4 local notifications
+
+After migration up and seed, run dedicated `go run ./cmd/worker` with the same backend env. SMTP/Telegram default false: jobs remain pending and no provider network connections occur. Provider startup validates typed config without contacting providers. Full variables/defaults in backend/.env.example. See notification-worker.md, smtp-integration.md, telegram-integration.md and realtime-sse.md.
+
+Add TEST_PHASE4_DATABASE_URL pointing only to isolated QA PostgreSQL for transactional/lease/worker/inbox/stream tests. Add TEST_NOTIFICATIONS_WEB_BASE_URL plus private TEST_ADMIN_EMAIL/PASSWORD for real Next adapter streaming tests. Seed a standing active report type before parallel HTTP suites. Local fake providers are mandatory in automated tests; never enable real SMTP/Telegram for test runs.

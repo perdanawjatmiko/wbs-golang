@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"wbs-golang/backend/internal/modules/auth"
+	"wbs-golang/backend/internal/modules/notifications"
 )
 
 const adminColumns = `r.id::text,r.code,r.name,r.contact,r.report_type_id::text,rt.name,r.status,r.created_at,r.updated_at`
@@ -215,7 +216,10 @@ func (r *Repository) Identity(ctx context.Context, id string) (string, string, e
 	return kind, contact, err
 }
 
-type WorkflowTx struct{ tx pgx.Tx }
+type WorkflowTx struct {
+	tx          pgx.Tx
+	maxAttempts int
+}
 type LockedReport struct {
 	Status, Kind, Contact string
 	UpdatedAt             time.Time
@@ -230,7 +234,7 @@ func (r *Repository) BeginWorkflow(ctx context.Context, kind, contact string) (*
 		rollback(ctx, tx)
 		return nil, err
 	}
-	return &WorkflowTx{tx}, nil
+	return &WorkflowTx{tx, r.maxAttempts}, nil
 }
 func (w *WorkflowTx) Rollback(ctx context.Context) { rollback(ctx, w.tx) }
 func (w *WorkflowTx) Actor(ctx context.Context, id string) (auth.Principal, error) {
@@ -253,6 +257,11 @@ func (w *WorkflowTx) Apply(ctx context.Context, id, actorID, oldStatus, newStatu
 	}
 	if _, err := w.tx.Exec(ctx, `INSERT INTO report_histories(report_id,admin_id,old_status,new_status,internal_note,external_note,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`, id, actorID, oldStatus, newStatus, internal, external, result.UpdatedAt); err != nil {
 		return result, err
+	}
+	if oldStatus != newStatus {
+		if err := notifications.Record(ctx, w.tx, id, notifications.EventKey(newStatus), "report.status_changed", newStatus, external, w.maxAttempts); err != nil {
+			return result, err
+		}
 	}
 	return result, nil
 }

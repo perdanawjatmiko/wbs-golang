@@ -1,17 +1,17 @@
 # WBS & Ticketing Application
 
-Phase 3: workflow admin, pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin, history, notes, dan dashboard sudah tersedia. Notifikasi belum diimplementasikan.
+Phase 4: notifikasi multi-channel, workflow admin, pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin, history, notes, dan dashboard sudah tersedia. Notifikasi email SMTP asynchronous, Telegram alert laporan baru, inbox admin dan SSE durable sudah tersedia.
 
 Stack: Go 1.26.2, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 
 ```text
 backend/
-  cmd/{api,migrate,seed}/main.go
+  cmd/{api,worker,migrate,seed}/main.go
   internal/
     config/
     middleware/
-    modules/{auth,health,master,reports}/
-    platform/{database,filestore,httpserver,logger,migration,problem,ratelimit,response,security}/
+    modules/{auth,health,master,reports,notifications}/
+    platform/{database,filestore,httpserver,logger,mailer,migration,problem,ratelimit,response,security,telegram}/
     seed/
   migrations/
   tests/
@@ -20,7 +20,7 @@ frontend/
   src/
     app/
     components/ui/
-    features/{admin,admin-reports,reports,system}/
+    features/{admin,admin-reports,notifications,reports,system}/
     lib/{api,config}/
     types/
   .env.example
@@ -150,4 +150,12 @@ Dokumentasi lengkap: [Phase 2](docs/phase-2.md), [submission](docs/report-submis
 
 /admin menampilkan dashboard untuk report.view; /admin/reports menyediakan search/filter/pagination/sorting, dan /admin/reports/[id] menyediakan detail, attachment privat, history, status/notes forms. report.update tidak otomatis memberikan report.view. Semua perubahan memakai expected_updated_at, contact advisory lock yang sama dengan submission, row lock dan atomic history. Rejected wajib external_note; reopening tidak boleh melewati5 active reports.
 
-Tidak ada migration/dependency/env aplikasi baru; gunakan setup existing dan grant permission melalui role editor. Dokumentasi lengkap: [Phase3](docs/phase-3.md), [workflow/API/lock policy](docs/report-workflow.md), [history and privacy](docs/report-history.md). Public tracking mempertahankan code+contact dan menyaring internal-only history. Tidak ada fitur notifikasi atau deployment Phase4–5.
+Tidak ada migration/dependency/env aplikasi baru; gunakan setup existing dan grant permission melalui role editor. Dokumentasi lengkap: [Phase3](docs/phase-3.md), [workflow/API/lock policy](docs/report-workflow.md), [history and privacy](docs/report-history.md). Public tracking mempertahankan code+contact dan menyaring internal-only history. Bagian Phase3 ini mempertahankan fondasi transaksi; tambahan notifikasi Phase4 dijelaskan berikut. Deployment tetap di luar scope.
+
+## Phase 4 notifications
+
+Jalankan migration up dan seed, kemudian `go run ./cmd/api` dan `go run ./cmd/worker` pada terminal terpisah dengan environment backend yang sama. Provider default nonaktif; delivery tetap pending tanpa koneksi keluar. Aktifkan SMTP/Telegram hanya setelah meninjau backlog dan konfigurasi privat. Tidak ada credential frontend tambahan.
+
+Inbox/bell menggunakan report.view; monitoring `/admin/notification-deliveries` memakai notifications.manage (seed Super Admin, bukan Investigator). Semua operasi read/retry memakai cookie dan CSRF existing. SSE durable mendukung reconnect/replay lintas instance; pengiriman provider at-least-once, risiko duplikasi saat timeout tetap ada.
+
+Panduan lengkap: [Phase4](docs/phase-4.md), [architecture](docs/notification-architecture.md), [worker](docs/notification-worker.md), [SMTP](docs/smtp-integration.md), [Telegram](docs/telegram-integration.md), [SSE](docs/realtime-sse.md), [recovery](docs/notification-recovery.md). Environment lengkap di backend/.env.example. Tambahkan TEST_PHASE4_DATABASE_URL untuk suite PostgreSQL terisolasi; TEST_NOTIFICATIONS_WEB_BASE_URL untuk HTTP notifikasi.

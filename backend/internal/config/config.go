@@ -20,6 +20,7 @@ type Config struct {
 	BodyLimit                                               int64
 	SessionTTL, QueryTimeout                                time.Duration
 	Reports                                                 ReportsConfig
+	Notifications                                           NotificationsConfig
 }
 
 func Load() (Config, error) { return Parse(os.Getenv) }
@@ -114,6 +115,13 @@ func Parse(get func(string) string) (Config, error) {
 		return c, fmt.Errorf("REPORT_REQUEST_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
 	}
 	c.Reports = reports
+	c.Notifications, err = parseNotifications(get)
+	if err != nil {
+		return c, err
+	}
+	if c.Notifications.LeaseDuration < max(c.Notifications.SMTP.Timeout, c.Notifications.Telegram.Timeout)+2*c.QueryTimeout+5*time.Second {
+		return c, fmt.Errorf("notification lease must cover provider timeout, database queries and a 5s margin")
+	}
 	return c, nil
 }
 

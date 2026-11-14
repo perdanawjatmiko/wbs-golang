@@ -10,7 +10,7 @@ import (
 	"wbs-golang/backend/internal/platform/security"
 )
 
-var Permissions = []string{"report.view", "report.update", "master.manage", "users.manage", "roles.manage", "permissions.manage", "report-types.manage", "faqs.manage", "email-templates.manage"}
+var Permissions = []string{"report.view", "report.update", "master.manage", "users.manage", "roles.manage", "permissions.manage", "report-types.manage", "faqs.manage", "email-templates.manage", "notifications.manage"}
 
 type Admin struct{ Email, Password, Name string }
 

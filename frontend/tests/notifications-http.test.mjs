@@ -1,0 +1,30 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+const base=process.env.TEST_NOTIFICATIONS_WEB_BASE_URL;
+test('HTTP notification integration: transactional inbox, incremental SSE replay, CSRF, monitoring and logout',{skip:!base||!process.env.TEST_ADMIN_EMAIL||!process.env.TEST_ADMIN_PASSWORD},async()=>{
+ const origin=new URL(base).origin;
+ let res=await fetch(`${base}/api/backend/auth/login`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:process.env.TEST_ADMIN_EMAIL,password:process.env.TEST_ADMIN_PASSWORD})});assert.equal(res.status,200);
+ const cookie=res.headers.getSetCookie().find(v=>v.startsWith('wbs_session=')).split(';')[0];const session=(await res.json()).data;
+ const headers={Cookie:cookie,Origin:origin,'Content-Type':'application/json','X-CSRF-Token':session.csrf_token};
+ const call=async(path,method='GET',body,expected=200)=>{const r=await fetch(`${base}/api/backend/${path}`,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});assert.equal(r.status,expected,`${path}: ${await r.clone().text()}`);return (await r.json()).data;};
+ const type=await call('admin/report-types','POST',{name:'Notification HTTP '+Date.now()},201);
+ const ac=new AbortController();res=await fetch(`${base}/api/backend/admin/notifications/stream`,{headers:{Cookie:cookie},signal:ac.signal});assert.equal(res.status,200);assert.ok(res.headers.get('content-type').includes('text/event-stream'));assert.ok(res.headers.get('cache-control').includes('no-store'));
+ const reader=res.body.getReader();let buffer='';const decoder=new TextDecoder();
+ const readUntil=async(text)=>{const timer=setTimeout(()=>ac.abort(),6000);try{while(!buffer.includes(text)){const next=await reader.read();assert.equal(next.done,false);buffer+=decoder.decode(next.value,{stream:true});}return buffer;}finally{clearTimeout(timer);}};
+ await readUntil('connected');
+ const contact=`notification-${Date.now()}@example.test`;const form=new FormData();for(const[k,v]of Object.entries({name:'Notification HTTP',contact,contact_type:'EMAIL',report_type_id:type.id,detail:'Private HTTP detail'}))form.set(k,v);
+ res=await fetch(`${base}/api/public/reports`,{method:'POST',headers:{Origin:origin},body:form});assert.equal(res.status,201);const created=(await res.json()).data;
+ await readUntil(created.report_code);assert.ok(buffer.includes('event: report.created'));assert.ok(!buffer.includes(contact));assert.ok(!buffer.includes('Private HTTP detail'));
+ const frames=buffer.split('\n\n').filter(v=>v.includes(created.report_code));const cursor=frames[0].match(/id: (\d+)/)[1];
+ ac.abort();await reader.cancel().catch(()=>{});
+ const inbox=await call('admin/notifications?per_page=100');const n=inbox.items.find(n=>n.title===created.report_code);assert.ok(n);assert.ok((await call('admin/notifications/unread-count')).unread_count>0);
+ res=await fetch(`${base}/api/backend/admin/notifications/${n.id}/read`,{method:'POST',headers:{...headers,'X-CSRF-Token':''},body:'{}'});assert.equal(res.status,403);
+ await call(`admin/notifications/${n.id}/read`,'POST',{});assert.ok((await call('admin/notifications?per_page=100')).items.find(v=>v.id===n.id).read_at);
+ await call('admin/notifications/read-all','POST',{});
+ const d=await call(`admin/reports/${n.report_id}`);await call(`admin/reports/${n.report_id}/status`,'PATCH',{status:'Rejected',internal_note:'STRICTLY INTERNAL HTTP',external_note:'Public HTTP reason',expected_updated_at:d.updated_at});
+ const replayAbort=new AbortController();res=await fetch(`${base}/api/backend/admin/notifications/stream`,{headers:{Cookie:cookie,'Last-Event-ID':cursor},signal:replayAbort.signal});const rr=res.body.getReader();let replay='';const replayTimer=setTimeout(()=>replayAbort.abort(),6000);try{while(!replay.includes('report.status_changed')){const next=await rr.read();assert.equal(next.done,false);replay+=decoder.decode(next.value);}assert.ok(!replay.includes('STRICTLY INTERNAL HTTP'));}finally{clearTimeout(replayTimer);replayAbort.abort();await rr.cancel().catch(()=>{});}
+ const deliveries=await call('admin/notification-deliveries?channel=EMAIL&status=pending');assert.ok(deliveries.items.length>0);const raw=JSON.stringify(deliveries);for(const secret of [contact,'recipient_ref','payload','password','STRICTLY INTERNAL HTTP'])assert.ok(!raw.includes(secret));
+ const delivery=deliveries.items[0];await call(`admin/notification-deliveries/${delivery.id}`);await call(`admin/notification-deliveries/${delivery.id}/retry`,'POST',{},409);
+ res=await fetch(`${base}/admin/notification-deliveries`,{headers:{Cookie:cookie}});assert.equal(res.status,200);assert.ok((await res.text()).includes('Pengiriman notifikasi'));
+ await call('auth/logout','POST',{});res=await fetch(`${base}/api/backend/admin/notifications/stream`,{headers:{Cookie:cookie}});assert.equal(res.status,401);
+});

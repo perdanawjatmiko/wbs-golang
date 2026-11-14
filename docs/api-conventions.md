@@ -86,3 +86,11 @@ GET /api/v1/admin/dashboard (report.view): total_reports/open_reports/on_progres
 PATCH /api/v1/admin/reports/:id/status (report.update+CSRF): {status,internal_note,external_note,expected_updated_at}. POST /reports/:id/notes: {internal_note,external_note,expected_updated_at}. Echo timestamp exactly; no rounding. Notes<=10000 Unicode characters each. Reject empty external_note for Rejected422; notes-only requires one note. Success acknowledgment id/updated_at (+status only with report.view); never full detail for writer-only roles.
 
 New409 codes: STALE_REPORT, STATUS_UNCHANGED, CONTACT_REVIEW_REQUIRED, REPORT_IDENTITY_CHANGED; reactivation quota uses existing REPORT_ACTIVE_LIMIT_REACHED409. Missing attachment404 ATTACHMENT_NOT_FOUND. Missing/invalid version422 VALIDATION_ERROR. No history edit/delete endpoint. No automatic retry after network/commit uncertainty.
+
+## Phase4 admin notifications
+
+GET /api/v1/admin/notifications, GET /notifications/unread-count, POST /notifications/:id/read and POST /notifications/read-all require report.view; read writes require existing CSRF and affect only current admin. Inbox data: items{id,event_id,report_id,title,message,read_at,created_at}, pagination{page,per_page,total,total_pages}. Unread data: {unread_count}.
+
+GET /api/v1/admin/notification-deliveries and /:id, POST /:id/retry require notifications.manage; retry also CSRF. List query page/per_page(max100), channel(EMAIL/TELEGRAM), status(pending/processing/sent/retrying/failed). Data: items of safe metadata and pagination plus global metrics. Detail returns the same DTO with one item. No recipient/payload is returned. Retry conflict409 DELIVERY_RETRY_CONFLICT covers processing/nonfailed/exhausted/already-manually-retried state. Read other inbox id returns404. Read and retry success use existing envelope.
+
+GET /api/v1/admin/notifications/stream is the text/event-stream exception to JSON. Requires report.view/current session; Last-Event-ID is a nonnegative decimal sequence. See realtime-sse.md for frames, bounded replay/reset, authorization and no-cache policy. No external notification endpoint or public stream exists.
