@@ -61,6 +61,8 @@ func Security(production bool) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("Referrer-Policy", "no-referrer")
+		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		c.Header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
 		c.Header("Cache-Control", "no-store")
 		if production {
 			c.Header("Strict-Transport-Security", "max-age=31536000")

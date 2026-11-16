@@ -1,4 +1,49 @@
 import Link from "next/link";
-export default function PublicLayout({ children }: {
-    children: React.ReactNode;
-}) { return <><header className="border-b border-zinc-200 dark:border-zinc-800"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5"><Link className="text-xl font-bold tracking-tight" href="/">WBS<span className="ml-3 text-sm font-normal text-zinc-500">Whistleblowing System</span></Link><nav aria-label="Navigasi publik" className="flex gap-5 text-sm font-medium"><Link href="/lapor">Buat laporan</Link><Link href="/tracking">Tracking</Link></nav></div></header><main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 sm:py-16">{children}</main><footer className="border-t border-zinc-200 px-6 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800">WBS · Pelaporan dan penelusuran status</footer></>; }
+import { Icon } from "@/components/ui/icon";
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="public-shell">
+      <a className="skip-link" href="#public-content">
+        Lewati ke konten utama
+      </a>
+      <header className="public-header">
+        <div className="public-header-inner">
+          <Link className="public-brand" href="/">
+            <span className="brand-mark" aria-hidden="true">
+              W
+            </span>
+            <span className="public-brand-copy">
+              <span>APN WBS</span>
+              <small>Agrinas Pangan Whistleblowing System</small>
+            </span>
+          </Link>
+          <nav aria-label="Navigasi publik" className="public-nav">
+            <Link href="/tracking" className="flex gap-2 items-center justify-center bg-primary">
+              <Icon className="text-white" name="file" size={16} />
+              <span className="text-white">Buat Laporan</span>
+            </Link>
+            <Link href="/tracking" className="flex gap-2 items-center justify-center">
+              <Icon className="text-primary" name="search" size={16} />
+              <span className="text-primary">Lacak laporan</span>
+            </Link>
+          </nav>
+        </div>
+      </header>
+      <main id="public-content" className="public-main">
+        {children}
+      </main>
+      <footer className="public-footer">
+        <div className="public-footer-inner">
+          <span>WBS · Pelaporan dan penelusuran status</span>
+          <span>
+            Gunakan kode laporan dan contact yang sama untuk tracking.
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+}

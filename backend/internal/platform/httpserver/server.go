@@ -16,7 +16,9 @@ import (
 
 func Router(c config.Config, log *slog.Logger, h *health.Handler) *gin.Engine {
 	r := gin.New()
-	_ = r.SetTrustedProxies(nil)
+	_ = r.SetTrustedProxies(c.Security.TrustedProxyCIDRs)
+	r.ForwardedByClientIP = len(c.Security.TrustedProxyCIDRs) > 0
+	r.RemoteIPHeaders = []string{"X-Forwarded-For"}
 	r.HandleMethodNotAllowed = true
 	r.Use(middleware.RequestID(), middleware.Logging(log), middleware.Recovery(log), middleware.Security(c.Env == "production"), middleware.CORS(c.Origins), middleware.BodyLimit(c.BodyLimit))
 	r.GET("/health/live", h.Live)

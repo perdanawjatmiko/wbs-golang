@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"wbs-golang/backend/internal/platform/database"
@@ -19,12 +20,15 @@ import (
 const CookieName = "wbs_session"
 
 type Handler struct {
-	s       *Service
-	log     *slog.Logger
-	secure  bool
-	ttl     time.Duration
-	origins map[string]bool
-	limiter *Limiter
+	s           *Service
+	log         *slog.Logger
+	secure      bool
+	ttl         time.Duration
+	origins     map[string]bool
+	limiter     *Limiter
+	gate        ratelimit.Gate
+	loginLimit  int
+	loginWindow time.Duration
 }
 
 func NewHandler(s *Service, log *slog.Logger, secure bool, ttl time.Duration, origins []string) *Handler {
@@ -32,7 +36,15 @@ func NewHandler(s *Service, log *slog.Logger, secure bool, ttl time.Duration, or
 	for _, o := range origins {
 		allowed[o] = true
 	}
-	return &Handler{s, log, secure, ttl, allowed, NewLimiter(10, 15*time.Minute, 10000)}
+	return &Handler{s: s, log: log, secure: secure, ttl: ttl, origins: allowed, limiter: NewLimiter(10, 15*time.Minute, 10000), loginLimit: 10, loginWindow: 15 * time.Minute}
+}
+
+// UseRateGate is composition-time injection; API always supplies the PostgreSQL gate.
+func (h *Handler) UseRateGate(g ratelimit.Gate, limit int, window time.Duration) *Handler {
+	h.gate = g
+	h.loginLimit = limit
+	h.loginWindow = window
+	return h
 }
 func (h *Handler) Fail(c *gin.Context, err error) {
 	p := problem.Map(err)
@@ -69,9 +81,20 @@ func (h *Handler) Login(c *gin.Context) {
 	if !h.Origin(c) {
 		return
 	}
-	if !h.limiter.Allow(c.ClientIP(), time.Now()) {
+	allowed, retry := true, 900
+	if h.gate != nil {
+		d, err := h.gate.Check(c.Request.Context(), "admin_login", c.ClientIP(), h.loginLimit, h.loginWindow)
+		if err != nil {
+			h.Fail(c, problem.New(503, "RATE_LIMIT_UNAVAILABLE", "Layanan pembatasan request belum tersedia."))
+			return
+		}
+		allowed, retry = d.Allowed, d.RetryAfter
+	} else {
+		allowed = h.limiter.Allow(c.ClientIP(), time.Now())
+	}
+	if !allowed {
+		c.Header("Retry-After", strconv.Itoa(retry))
 		response.Error(c, 429, "RATE_LIMITED", "Terlalu banyak percobaan login. Coba lagi nanti.")
-		c.Header("Retry-After", "900")
 		return
 	}
 	var req struct {

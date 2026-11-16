@@ -46,6 +46,8 @@ async function forward(request: NextRequest, context: {
         }
         const upstream = await fetch(`${config.apiBaseURL}/api/v1/${route}${query.size ? `?${query}` : ""}`, { method: request.method, headers, body, cache: "no-store", redirect: "error", signal });
         const responseHeaders = new Headers({ "Content-Type": "application/json", "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff" });
+        const retry=upstream.headers.get("retry-after");
+        if(retry && /^[0-9]{1,6}$/.test(retry)) responseHeaders.set("Retry-After",retry);
         for (const cookie of upstream.headers.getSetCookie())
             if (cookie.startsWith("wbs_session="))
                 responseHeaders.append("Set-Cookie", cookie);

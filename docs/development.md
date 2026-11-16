@@ -80,3 +80,9 @@ Attachment access always goes through protected /api/backend/admin/reports/:id/a
 After migration up and seed, run dedicated `go run ./cmd/worker` with the same backend env. SMTP/Telegram default false: jobs remain pending and no provider network connections occur. Provider startup validates typed config without contacting providers. Full variables/defaults in backend/.env.example. See notification-worker.md, smtp-integration.md, telegram-integration.md and realtime-sse.md.
 
 Add TEST_PHASE4_DATABASE_URL pointing only to isolated QA PostgreSQL for transactional/lease/worker/inbox/stream tests. Add TEST_NOTIFICATIONS_WEB_BASE_URL plus private TEST_ADMIN_EMAIL/PASSWORD for real Next adapter streaming tests. Seed a standing active report type before parallel HTTP suites. Local fake providers are mandatory in automated tests; never enable real SMTP/Telegram for test runs.
+
+## Phase 5 local Docker
+
+Follow [docker-local](docker-local.md). Compose contains only `frontend`, `backend`, and `worker`; PostgreSQL is external and must be an explicitly approved development server. Copy `.env.docker.example` to `.env.docker`, set the existing `DATABASE_URL`, inspect the target DB identity before any migration, then use explicit host-side migration/seed commands. No schema or seed operation happens during container startup. Keep SMTP/Telegram disabled in local tests. Attachments persist in the named `attachments` volume; do not use `docker compose down -v` when retaining local uploads.
+
+The checked-in smoke helper is opt-in/read-only and requires `WBS_APPROVED_DEV_DATABASE=yes`. It does not migrate/seed. Runtime build/test verification was blocked in the Phase 5 session; see [security test results](security-test-results.md).

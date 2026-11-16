@@ -59,3 +59,11 @@ Optimistic expected_updated_at is mandatory for status/notes; monotonic microsec
 ## Phase4
 
 Transactional notification writer/fanout shares report/history commits; worker performs provider I/O after atomic leased claims. Durable PostgreSQL realtime records drive per-admin authorized SSE and inbox. See [notification architecture](notification-architecture.md) for lock ordering, snapshot/versioning and technical decisions; [Phase4](phase-4.md) for implementation inventory. Existing API/master/report architecture remains intact.
+
+## Phase 5 local containers and security hardening
+
+Local Compose is intentionally three application services only: Next frontend, Go API, and Go worker. PostgreSQL remains an existing external development resource and is never managed by Compose. Backend and worker share a multi-stage image; frontend uses standalone output. Attachments use the only named volume and remain private to backend. See [docker-local](docker-local.md).
+
+Phase 5 adds an additive PostgreSQL fixed-slot rate-limit table and a distributed atomic UPSERT for login, public submission and tracking. Canonical IPs hash to bounded slots to prevent attacker-controlled key growth. Hash collisions can conservatively share a budget. Trusted proxy CIDRs default empty and accept only private/local ranges; the frontend adapter does not invent client identity. A bounded startup DB retry applies only before worker serving; business transactions are never retried automatically. Details and unresolved runtime verification are in [security-hardening](security-hardening.md).
+
+The local image/runtime hardening is source-configured, not validated by a successful build in this run. Full runtime/security status is intentionally incomplete: see [Phase 5](phase-5.md) and [security test results](security-test-results.md). No business rules or blueprint content changed.

@@ -21,6 +21,9 @@ type TelegramConfig struct {
 	Timeout       time.Duration
 }
 type NotificationsConfig struct {
+	StartupAttempts int
+	StartupBackoff  time.Duration
+
 	SMTP                                                              SMTPConfig
 	Telegram                                                          TelegramConfig
 	WorkerEnabled                                                     bool
@@ -30,7 +33,21 @@ type NotificationsConfig struct {
 }
 
 func parseNotifications(get func(string) string) (NotificationsConfig, error) {
-	n := NotificationsConfig{}
+	n := NotificationsConfig{StartupAttempts: 5, StartupBackoff: time.Second}
+	if raw := get("NOTIFICATION_WORKER_DB_STARTUP_ATTEMPTS"); raw != "" {
+		v, e := strconv.Atoi(raw)
+		if e != nil || v < 1 || v > 10 {
+			return n, fmt.Errorf("NOTIFICATION_WORKER_DB_STARTUP_ATTEMPTS must be 1..10")
+		}
+		n.StartupAttempts = v
+	}
+	if raw := get("NOTIFICATION_WORKER_DB_STARTUP_BACKOFF"); raw != "" {
+		v, e := time.ParseDuration(raw)
+		if e != nil || v < time.Second || v > 30*time.Second {
+			return n, fmt.Errorf("NOTIFICATION_WORKER_DB_STARTUP_BACKOFF must be 1s..30s")
+		}
+		n.StartupBackoff = v
+	}
 	value := func(k, d string) string {
 		if v := get(k); v != "" {
 			return v

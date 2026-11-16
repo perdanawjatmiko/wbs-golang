@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.git
+.security-audit
+coverage
+*.tsbuildinfo
+npm-debug.log*
+Dockerfile
+.dockerignore

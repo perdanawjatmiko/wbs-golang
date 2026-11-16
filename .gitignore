@@ -11,3 +11,7 @@ backend/coverage.out
 
 # Private report attachments
 backend/var/
+
+# Local Docker secrets and security audit evidence
+!.env.docker.example
+.security-audit/

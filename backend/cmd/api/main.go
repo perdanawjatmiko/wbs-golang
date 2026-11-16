@@ -18,6 +18,7 @@ import (
 	"wbs-golang/backend/internal/platform/filestore"
 	"wbs-golang/backend/internal/platform/httpserver"
 	"wbs-golang/backend/internal/platform/logger"
+	"wbs-golang/backend/internal/platform/ratelimit"
 )
 
 var version = "dev"
@@ -40,7 +41,8 @@ func run() error {
 	log.Info("starting HTTP server", "app", c.AppName, "version", version)
 	r := httpserver.Router(c, log, h)
 	authService := auth.NewService(auth.NewRepository(pool), c.SessionTTL, c.QueryTimeout)
-	a := auth.NewHandler(authService, log, c.Env == "production", c.SessionTTL, c.Origins)
+	gate := ratelimit.NewPostgres(pool, c.Security.RateSlots, c.Security.RateTimeout)
+	a := auth.NewHandler(authService, log, c.Security.CookieSecure, c.SessionTTL, c.Origins).UseRateGate(gate, c.Security.LoginLimit, c.Security.LoginWindow)
 	a.Register(r)
 	master.NewHandler(master.NewService(master.NewRepository(pool), c.QueryTimeout), a).Register(r)
 	zone, err := time.LoadLocation(c.Reports.Timezone)
@@ -52,7 +54,7 @@ func run() error {
 		return err
 	}
 	defer files.Close()
-	reports.NewHandler(reports.NewService(reports.NewRepository(pool, zone, time.Now, reports.RandomPrefix).NotificationAttempts(c.Notifications.MaxAttempts), files, c.QueryTimeout, log), files, c.Reports, log).Register(r)
+	reports.NewHandler(reports.NewService(reports.NewRepository(pool, zone, time.Now, reports.RandomPrefix).NotificationAttempts(c.Notifications.MaxAttempts), files, c.QueryTimeout, log), files, c.Reports, log).UseRateGate(gate).Register(r)
 	reports.NewAdminHandler(reports.NewAdminService(reports.NewRepository(pool, zone, time.Now, reports.RandomPrefix).NotificationAttempts(c.Notifications.MaxAttempts), files, c.QueryTimeout), a, zone, c.WriteTimeout, log).Register(r)
 	notifications.NewHandler(notifications.NewService(notifications.NewRepository(pool), authService, c.QueryTimeout), a, c.Notifications, ctx).Register(r)
 	return httpserver.Run(ctx, httpserver.New(c, r), c.ShutdownTimeout)

@@ -138,3 +138,19 @@ func TestCanceledShutdown(t *testing.T) {
 		t.Fatal("shutdown blocked")
 	}
 }
+
+func TestUntrustedForwardedIdentityAndSecurityHeaders(t *testing.T) {
+	r := testRouter(t, &fakeDB{}).(*gin.Engine)
+	r.GET("/client-ip", func(c *gin.Context) { response.Success(c, 200, map[string]string{"ip": c.ClientIP()}) })
+	req := httptest.NewRequest("GET", "/client-ip", nil)
+	req.RemoteAddr = "192.0.2.1:1234"
+	req.Header.Set("X-Forwarded-For", "198.51.100.9")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if !strings.Contains(w.Body.String(), "192.0.2.1") || strings.Contains(w.Body.String(), "198.51.100.9") {
+		t.Fatal("untrusted forwarding accepted")
+	}
+	if w.Header().Get("Strict-Transport-Security") != "" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") || w.Header().Get("Permissions-Policy") == "" {
+		t.Fatal("HTTP security policy")
+	}
+}
