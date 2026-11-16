@@ -35,13 +35,16 @@ test('shadcn AlertDialog uses WBS tokens and replaces native destructive confirm
   const dialog = read('components/ui/alert-dialog.tsx');
   const button = read('components/ui/button.tsx');
   const management = read('features/admin/management.tsx');
+  const rolesManagement = read('features/admin/roles-management-page.tsx');
+  const permissionsManagement = read('features/admin/permissions-management-page.tsx');
   assert.ok(dialog.includes('@radix-ui/react-alert-dialog'));
   assert.ok(dialog.includes('border-border bg-white'));
   assert.ok(button.includes('min-h-[42px]'));
   assert.ok(button.includes('bg-primary-hover'));
-  assert.ok(management.includes('<AlertDialog open={pendingDelete !== null}'));
-  assert.ok(management.includes('AlertDialogAction variant="destructive"'));
-  assert.ok(!management.includes('window.confirm('));
+  const deleteDialogs = [management, rolesManagement, permissionsManagement];
+  assert.ok(deleteDialogs.every((source) => source.includes('pendingDelete !== null') && source.includes('<AlertDialog')));
+  assert.ok(deleteDialogs.every((source) => /AlertDialogAction[\s\S]{0,160}variant="destructive"/.test(source)));
+  assert.ok(deleteDialogs.every((source) => !source.includes('window.confirm(')));
 });
 
 test('shadcn semantic tokens map to existing WBS palette without changing Geist', () => {
@@ -77,4 +80,24 @@ test('all WBS select controls use the shadcn NativeSelect while preserving nativ
   }
   const css = read('app/globals.css');
   assert.ok(css.includes('.admin-input[data-slot="native-select"] { padding-right: 40px; }'));
+});
+
+test('admin master CRUD routes are explicit pages and keep the shared permission guard', () => {
+  const routeRoot = path.join(root, 'app/admin/(protected)');
+  for (const route of ['users', 'roles', 'permissions', 'report-types', 'faqs', 'email-templates']) {
+    assert.ok(fs.existsSync(path.join(routeRoot, route, 'page.tsx')), route);
+  }
+  assert.ok(!fs.existsSync(path.join(routeRoot, '[resource]', 'page.tsx')));
+  const roles = read('app/admin/(protected)/roles/page.tsx');
+  const permissions = read('app/admin/(protected)/permissions/page.tsx');
+  assert.ok(roles.includes('requireSession()') && roles.includes('role_name !== "Super Admin"'));
+  assert.ok(permissions.includes('requireSession()') && permissions.includes('role_name !== "Super Admin"'));
+  assert.ok(roles.includes('RolesManagementPage'));
+  assert.ok(permissions.includes('PermissionsManagementPage'));
+  assert.ok(read('features/admin/roles-management-page.tsx').includes('admin/roles'));
+  assert.ok(read('features/admin/permissions-management-page.tsx').includes('admin/permissions'));
+  assert.ok(read('features/admin/resource-page.tsx').includes('canManage(session.user, resource)'));
+  const guide = fs.readFileSync(path.resolve(root, '../AGENTS.md'), 'utf8');
+  assert.ok(guide.includes('Keep admin CRUD routes explicit and static'));
+  assert.ok(guide.includes('Their fields, tables, validation, and CRUD actions belong in those feature files'));
 });
