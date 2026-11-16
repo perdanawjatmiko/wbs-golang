@@ -68,5 +68,6 @@
 
 - Configure official shadcn CLI for current Next.js 16/Tailwind 4 CSS variables and existing WBS aliases without replacing the current theme.
 - Add Radix-backed AlertDialog and WBS-styled Button primitives; use AlertDialog for the existing master-data delete confirmation while preserving request/CSRF behavior.
+- Add shadcn NativeSelect for all application select fields, retaining native HTML semantics and existing form contracts without another UI dependency.
 - Map shadcn semantic utility tokens to existing WBS values; retain local form controls, StatusBadge, layouts, tables, notifications and business components.
-- Add focused primitive/token contract tests and Phase 6F documentation. Lint, typecheck, 44 frontend tests and production build pass; 4 environment-gated HTTP tests skipped. Screenshot comparison and keyboard/WCAG verification remain blocked.
+- Add focused primitive/token/select contract tests and Phase 6F documentation. Screenshot comparison and keyboard/WCAG verification remain blocked.

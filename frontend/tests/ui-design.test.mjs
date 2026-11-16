@@ -53,3 +53,28 @@ test('shadcn semantic tokens map to existing WBS palette without changing Geist'
   assert.ok(css.includes('--navy: #0f172a'));
   assert.ok(layout.includes('Geist('));
 });
+
+test('all WBS select controls use the shadcn NativeSelect while preserving native semantics', () => {
+  const component = read('components/ui/native-select.tsx');
+  assert.ok(component.includes('<select'));
+  assert.ok(component.includes('React.ComponentProps<"select">'));
+  assert.ok(component.includes('function NativeSelectOption'));
+  assert.ok(component.includes('relative w-full'));
+  assert.ok(component.includes('@/lib/utils'));
+  assert.ok(!component.includes('lucide-react'));
+
+  const files = [
+    'features/notifications/deliveries.tsx',
+    'features/reports/report-form.tsx',
+    'features/admin-reports/detail.tsx',
+    'features/admin/management.tsx',
+    'features/admin-reports/list.tsx',
+  ];
+  for (const file of files) {
+    const source = read(file);
+    assert.ok(source.includes('NativeSelect, NativeSelectOption'), file);
+    assert.ok(!/<select\b|<option\b/.test(source), file);
+  }
+  const css = read('app/globals.css');
+  assert.ok(css.includes('.admin-input[data-slot="native-select"] { padding-right: 40px; }'));
+});

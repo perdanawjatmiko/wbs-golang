@@ -24,6 +24,8 @@ The palette is expressed as CSS custom properties in `src/app/globals.css`; comp
 
 Phase 6F adds semantic Tailwind v4 theme aliases (`--color-primary`, `--color-border`, `--color-ring`, `--color-card`, `--color-popover`, and related foreground/muted/destructive tokens) that reference the existing WBS custom properties. This mapping does not alter the existing palette or body styles. AlertDialog uses the existing white surface, slate text, border, 12px panel radius and 3px WBS focus outline. Its action buttons retain the 42px WBS control height and 8px radius. No global font, base background, spacing, or responsive selector was replaced.
 
+All application select fields use shadcn `NativeSelect`, which wraps the native HTML `<select>` for browser/mobile behavior. Its wrapper fills the existing form grid; `.admin-input` continues to define WBS height, padding, border, surface and text color. Reserved right padding makes room for the local chevron. Controlled values, labels, change handlers, validation attributes and option values are unchanged.
+
 ## Status semantics
 
 Reusable `StatusBadge` maps Open to blue/informational, On Progress to amber, Done to teal/complete, Rejected to red. Visible status text is always present; a small dot and color are supplementary. Status values are not changed.
