@@ -18,7 +18,11 @@ Light-first interface system for the existing WBS public service portal and auth
 | `--warning` | `#B45309` | In-progress state |
 | `--danger` | `#B91C1C` | Rejected/error state |
 
-The palette is expressed as CSS custom properties in `src/app/globals.css`; components use semantic classes. Dark-mode variants are opt-in and the current UI stays light. Geist Sans remains the existing font; no new font or component dependency was added. Body copy is 14px in admin and 16px in public content, with responsive title scales and a 4/8px spacing rhythm. Inputs/buttons use 8px radius; panels use 10–12px.
+The palette is expressed as CSS custom properties in `src/app/globals.css`; components use semantic classes. Dark-mode variants are opt-in and the current UI stays light. Geist Sans remains the existing font; Phase 6F adds only the dependencies required for the chosen primitives. Body copy is 14px in admin and 16px in public content, with responsive title scales and a 4/8px spacing rhythm. Inputs/buttons use 8px radius; panels use 10–12px.
+
+### shadcn semantic mapping
+
+Phase 6F adds semantic Tailwind v4 theme aliases (`--color-primary`, `--color-border`, `--color-ring`, `--color-card`, `--color-popover`, and related foreground/muted/destructive tokens) that reference the existing WBS custom properties. This mapping does not alter the existing palette or body styles. AlertDialog uses the existing white surface, slate text, border, 12px panel radius and 3px WBS focus outline. Its action buttons retain the 42px WBS control height and 8px radius. No global font, base background, spacing, or responsive selector was replaced.
 
 ## Status semantics
 
@@ -40,4 +44,4 @@ Semantic headings, labels, table headers, `aria-current`, button labels, live/er
 
 ## Technical choices
 
-No UI library was present. A small local SVG icon component keeps icon stroke/size consistent without adding a package. CSS utility conventions remain compatible with Tailwind 4 and existing components; no broad component-library migration or unrelated state library was added.
+Before Phase 6F no UI library was present. The UI now uses shadcn/ui as a source-managed primitive layer, currently for Button and AlertDialog only. The official CLI generated the component starting point; WBS token styling and direct Radix package imports were retained to avoid library defaults and an unnecessary all-primitives bundle. A small local SVG icon component remains in use; no icon library or unrelated state library was added. The Tailwind 4 CSS-first setup and existing components remain intact.

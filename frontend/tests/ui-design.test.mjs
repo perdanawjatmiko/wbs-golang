@@ -30,3 +30,26 @@ test('public copy does not promise anonymity or legal guarantees', () => {
   assert.ok(home.includes('Lacak laporan'));
   assert.ok(!/anonim|kerahasiaan dijamin|dijamin rahasia/i.test(home));
 });
+
+test('shadcn AlertDialog uses WBS tokens and replaces native destructive confirmation', () => {
+  const dialog = read('components/ui/alert-dialog.tsx');
+  const button = read('components/ui/button.tsx');
+  const management = read('features/admin/management.tsx');
+  assert.ok(dialog.includes('@radix-ui/react-alert-dialog'));
+  assert.ok(dialog.includes('border-border bg-white'));
+  assert.ok(button.includes('min-h-[42px]'));
+  assert.ok(button.includes('bg-primary-hover'));
+  assert.ok(management.includes('<AlertDialog open={pendingDelete !== null}'));
+  assert.ok(management.includes('AlertDialogAction variant="destructive"'));
+  assert.ok(!management.includes('window.confirm('));
+});
+
+test('shadcn semantic tokens map to existing WBS palette without changing Geist', () => {
+  const css = read('app/globals.css');
+  const layout = read('app/layout.tsx');
+  assert.ok(css.includes('--color-primary: var(--primary)'));
+  assert.ok(css.includes('--color-ring: var(--ring)'));
+  assert.ok(css.includes('--primary: #1d4ed8'));
+  assert.ok(css.includes('--navy: #0f172a'));
+  assert.ok(layout.includes('Geist('));
+});

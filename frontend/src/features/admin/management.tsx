@@ -1,6 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { adminRequest, AdminApiError } from "./client";
 import { validateForm, type FieldValue, type PageData, type Resource, type Row } from "./contracts";
 function initialValues(resource: Resource, row?: Row): Record<string, FieldValue> {
@@ -32,6 +42,7 @@ export function Management({ resource, csrf }: {
     const [feedback, setFeedback] = useState("");
     const [expired, setExpired] = useState(false);
     const [editing, setEditing] = useState<Row | null | undefined>(undefined);
+    const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
     const [values, setValues] = useState<Record<string, FieldValue>>({});
     const [choices, setChoices] = useState<Row[]>([]);
     const [optionsError, setOptionsError] = useState("");
@@ -72,8 +83,9 @@ export function Management({ resource, csrf }: {
     finally {
         setSaving(false);
     } }
-    async function remove(row: Row) { if (!window.confirm("Hapus data ini? Data yang masih direferensikan tidak dapat dihapus; gunakan nonaktifkan bila tersedia."))
-        return; setSaving(true); setError(""); try {
+    function remove(row: Row) { setPendingDelete(row); }
+    async function confirmRemove() { const row = pendingDelete; if (!row)
+        return; setPendingDelete(null); setSaving(true); setError(""); try {
         await adminRequest(`admin/${resource.path}/${row.id}`, { method: "DELETE", headers: { "X-CSRF-Token": csrf } });
         setFeedback("Data berhasil dihapus.");
         reload();
@@ -109,5 +121,7 @@ export function Management({ resource, csrf }: {
             })}
  {resource.path === "email-templates" && <div className="space-y-3"><p className="text-sm">Placeholder: {"{{report_code}}, {{user_name}}, {{status}}, {{external_note}}"}. Penyimpanan hanya mengizinkan tag pemformatan sederhana; script, style, gambar, dan URL dihapus.</p><h3 className="font-medium">Preview terisolasi</h3><iframe title="Preview email template" sandbox="" referrerPolicy="no-referrer" className="h-64 w-full rounded border bg-white" srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'none'; form-action 'none'; base-uri 'none'"></head><body>${String(values.body_html ?? "")}</body></html>`}/></div>}
  <div className="flex gap-3"><button className="admin-button" disabled={saving || !!optionsError}>{saving ? "Menyimpan…" : "Simpan"}</button><button type="button" className="admin-button-secondary" disabled={saving} onClick={() => setEditing(undefined)}>Batal</button></div></form>}
+ <AlertDialog open={pendingDelete !== null} onOpenChange={open => { if (!open && !saving)
+        setPendingDelete(null); }}><AlertDialogContent><AlertDialogHeader className="text-left"><AlertDialogTitle>Hapus data ini?</AlertDialogTitle><AlertDialogDescription>Data yang masih direferensikan tidak dapat dihapus. Gunakan opsi nonaktifkan bila tersedia.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel variant="outline" disabled={saving}>Batal</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={saving} onClick={() => void confirmRemove()}>Hapus</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </section>;
 }

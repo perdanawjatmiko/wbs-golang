@@ -4,6 +4,9 @@
 
 | Component/pattern | Location | Usage |
 |---|---|---|
+| Button | `frontend/src/components/ui/button.tsx` | shadcn/CVA button primitive; WBS dimensions, colors, radius, focus and disabled styling are retained |
+| AlertDialog | `frontend/src/components/ui/alert-dialog.tsx` | Radix-backed, accessible destructive confirmation used by master-data deletion |
+| `cn` utility | `frontend/src/lib/utils.ts` | `clsx` + `tailwind-merge` for predictable primitive class composition |
 | Icon | `src/components/ui/icon.tsx` | Small inline SVG icon set with decorative SVG hidden from assistive tech |
 | StatusBadge | `src/components/ui/status-badge.ts` | Shared text-plus-color report status indicator |
 | AdminShell | `src/components/layout/admin-shell.tsx` | Permission-derived navigation, collapsible rail/mobile drawer, breadcrumb, bell, profile, logout |
@@ -25,3 +28,7 @@
 - Existing notification bell/inbox/SSE and delivery monitoring/retry remain on current adapters and permissions.
 
 No API routes, permission policy, data fields, workflows, report content, or backend code were added by Phase 6.
+
+## shadcn/ui layer (Phase 6F)
+
+`components.json` configures the official CLI for the existing Tailwind v4 CSS file, Geist-based app, `@/*` aliases, CSS variables, and the Radix-backed New York component source. Only the AlertDialog/Button primitives are currently integrated. Native form controls, WBS `StatusBadge`, notification popover, data tables, cards, and business forms remain local because they are already contract-specific or have no clear migration benefit. Do not replace these wholesale.

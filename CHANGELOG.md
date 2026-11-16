@@ -63,3 +63,10 @@
 - Redesign public landing, report/tracking presentation and success states; admin dashboard, report table/detail, master data styling, notification surfaces and login.
 - Preserve all API, permission, authentication, CSRF, tracking privacy, report and notification contracts.
 - Add UI design/navigation tests and design/component/QA documentation. Lint, strict typecheck, frontend tests and production build pass; 4 environment-gated HTTP tests skipped. Visual spot-check limited to 375px public landing/login; authenticated/admin and populated backend states need QA.
+
+## 2026-11-16 — Phase 6F incremental shadcn/ui integration
+
+- Configure official shadcn CLI for current Next.js 16/Tailwind 4 CSS variables and existing WBS aliases without replacing the current theme.
+- Add Radix-backed AlertDialog and WBS-styled Button primitives; use AlertDialog for the existing master-data delete confirmation while preserving request/CSRF behavior.
+- Map shadcn semantic utility tokens to existing WBS values; retain local form controls, StatusBadge, layouts, tables, notifications and business components.
+- Add focused primitive/token contract tests and Phase 6F documentation. Lint, typecheck, 44 frontend tests and production build pass; 4 environment-gated HTTP tests skipped. Screenshot comparison and keyboard/WCAG verification remain blocked.
