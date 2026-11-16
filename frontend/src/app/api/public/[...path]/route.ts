@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { readBoundedText } from "@/features/admin/stream";
 import { allowedPublicPath } from "@/features/reports/bridge";
 import { serverConfig } from "@/lib/config/server";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ async function forward(request: NextRequest, { params }: {
             responseHeaders.set("Retry-After", retry);
         if (tooLarge)
             return failure(413, "BODY_TOO_LARGE", "Ukuran request terlalu besar.");
-        return new Response(await upstream.text(), { status: upstream.status, headers: responseHeaders });
+        return new Response(await readBoundedText(upstream.body,16*1024*1024,AbortSignal.any([request.signal,timeout])), { status: upstream.status, headers: responseHeaders });
     }
     catch {
         if (tooLarge)

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 type Config struct {
@@ -21,6 +22,7 @@ type Config struct {
 	SessionTTL, QueryTimeout                                time.Duration
 	Reports                                                 ReportsConfig
 	Notifications                                           NotificationsConfig
+	Security                                                SecurityConfig
 }
 
 func Load() (Config, error) { return Parse(os.Getenv) }
@@ -115,6 +117,13 @@ func Parse(get func(string) string) (Config, error) {
 		return c, fmt.Errorf("REPORT_REQUEST_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
 	}
 	c.Reports = reports
+	c.Security, err = parseSecurity(get, c.Env)
+	if err != nil {
+		return c, err
+	}
+	if c.Security.RateTimeout >= c.WriteTimeout {
+		return c, fmt.Errorf("RATE_LIMIT_TIMEOUT must be shorter than HTTP_WRITE_TIMEOUT")
+	}
 	c.Notifications, err = parseNotifications(get)
 	if err != nil {
 		return c, err
@@ -142,7 +151,7 @@ func parseReports(get func(string) string) (ReportsConfig, error) {
 		}
 		return d
 	}
-	r := ReportsConfig{Timezone: value("APP_TIMEZONE", "Asia/Jakarta"), UploadDir: value("UPLOAD_DIR", "./var/private/attachments")}
+	r := ReportsConfig{Timezone: strings.TrimSpace(value("APP_TIMEZONE", "Asia/Jakarta")), UploadDir: value("UPLOAD_DIR", "./var/private/attachments")}
 	if _, err := time.LoadLocation(r.Timezone); err != nil {
 		return r, fmt.Errorf("APP_TIMEZONE must be a valid IANA timezone")
 	}

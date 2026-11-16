@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,8 +26,19 @@ func run() error {
 		log.Info("notification worker disabled")
 		return nil
 	}
-	pool, err := database.Open(ctx, c)
+	var pool *pgxpool.Pool
+	err = database.Retry(ctx, c.Notifications.StartupAttempts, c.Notifications.StartupBackoff, func(attempt context.Context) error {
+		var connectErr error
+		pool, connectErr = database.Open(attempt, c)
+		if connectErr != nil {
+			log.Warn("worker database startup retry", "error_class", database.FailureClass(connectErr))
+		}
+		return connectErr
+	})
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
 		return err
 	}
 	defer pool.Close()

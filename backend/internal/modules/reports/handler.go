@@ -26,11 +26,13 @@ type Handler struct {
 	log           *slog.Logger
 	submit, track *ratelimit.Limiter
 	slots         chan struct{}
+	gate          ratelimit.Gate
 }
 
 func NewHandler(s *Service, files filestore.Store, c config.ReportsConfig, log *slog.Logger) *Handler {
 	return &Handler{s: s, files: files, config: c, log: log, submit: ratelimit.NewLimiter(c.SubmitLimit, c.RateWindow, 10000), track: ratelimit.NewLimiter(c.TrackLimit, c.RateWindow, 10000), slots: make(chan struct{}, c.UploadConcurrency)}
 }
+func (h *Handler) UseRateGate(g ratelimit.Gate) *Handler { h.gate = g; return h }
 func (h *Handler) fail(c *gin.Context, err error) {
 	var oversized *http.MaxBytesError
 	if errors.As(err, &oversized) {
@@ -45,8 +47,23 @@ func (h *Handler) fail(c *gin.Context, err error) {
 }
 func (h *Handler) limit(l *ratelimit.Limiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !l.Allow(c.ClientIP(), time.Now()) {
-			c.Header("Retry-After", strconv.Itoa(int(h.config.RateWindow.Seconds())))
+		allowed, retry := true, int(h.config.RateWindow.Seconds())
+		if h.gate != nil {
+			scope, limit := "report_submit", h.config.SubmitLimit
+			if l == h.track {
+				scope, limit = "report_track", h.config.TrackLimit
+			}
+			d, err := h.gate.Check(c.Request.Context(), scope, c.ClientIP(), limit, h.config.RateWindow)
+			if err != nil {
+				h.fail(c, problem.New(503, "RATE_LIMIT_UNAVAILABLE", "Layanan pembatasan request belum tersedia."))
+				return
+			}
+			allowed, retry = d.Allowed, d.RetryAfter
+		} else {
+			allowed = l.Allow(c.ClientIP(), time.Now())
+		}
+		if !allowed {
+			c.Header("Retry-After", strconv.Itoa(retry))
 			response.Error(c, 429, "RATE_LIMITED", "Terlalu banyak request. Coba kembali nanti.")
 			return
 		}

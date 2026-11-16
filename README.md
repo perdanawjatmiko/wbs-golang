@@ -2,7 +2,7 @@
 
 Phase 4: notifikasi multi-channel, workflow admin, pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin, history, notes, dan dashboard sudah tersedia. Notifikasi email SMTP asynchronous, Telegram alert laporan baru, inbox admin dan SSE durable sudah tersedia.
 
-Stack: Go 1.26.2, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
+Stack: Go 1.26.11, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 
 ```text
 backend/
@@ -159,3 +159,17 @@ Jalankan migration up dan seed, kemudian `go run ./cmd/api` dan `go run ./cmd/wo
 Inbox/bell menggunakan report.view; monitoring `/admin/notification-deliveries` memakai notifications.manage (seed Super Admin, bukan Investigator). Semua operasi read/retry memakai cookie dan CSRF existing. SSE durable mendukung reconnect/replay lintas instance; pengiriman provider at-least-once, risiko duplikasi saat timeout tetap ada.
 
 Panduan lengkap: [Phase4](docs/phase-4.md), [architecture](docs/notification-architecture.md), [worker](docs/notification-worker.md), [SMTP](docs/smtp-integration.md), [Telegram](docs/telegram-integration.md), [SSE](docs/realtime-sse.md), [recovery](docs/notification-recovery.md). Environment lengkap di backend/.env.example. Tambahkan TEST_PHASE4_DATABASE_URL untuk suite PostgreSQL terisolasi; TEST_NOTIFICATIONS_WEB_BASE_URL untuk HTTP notifikasi.
+
+## Phase 5 — local Docker dan hardening
+
+Compose lokal menyediakan tiga service aplikasi (`frontend`, `backend`, `worker`) dan memakai PostgreSQL development yang sudah ada di luar Docker. Tidak ada container/volume PostgreSQL atau Redis. Untuk DB di VM, gunakan private IP/DNS; di Docker Desktop pada macOS, `host.docker.internal` dapat dipakai untuk PostgreSQL host jika listener/firewall mengizinkan. `127.0.0.1` di dalam container menunjuk container itu sendiri.
+
+Mulai dengan `cp .env.docker.example .env.docker`, tinjau dan isi konfigurasi database development yang disetujui, lalu ikuti [docker-local](docs/docker-local.md). Migration dan seeding merupakan perintah eksplisit; container tidak menjalankannya saat startup. Attachment persisten pada volume privat `attachments`. Jangan memakai `docker compose down -v` bila ingin menyimpan file tersebut. SMTP/Telegram sengaja nonaktif pada Compose lokal.
+
+Status Phase 5 dan keterbatasan verifikasi dijabarkan di [phase-5](docs/phase-5.md). Audit source-only, finding, checklist 56 kriteria, dan hasil test yang benar-benar dijalankan tersedia di [security test results](docs/security-test-results.md), [security audit](docs/security-audit.md), dan `docs/security-hardening.md`. Phase 5 **belum lengkap**: Docker image extraction kehabisan ruang dan sandbox audit yang diwajibkan untuk menjalankan test kode tidak tersedia. Tidak ada test/build/runtime yang diklaim lulus tanpa bukti.
+
+## Phase 6 — UI/UX redesign
+
+Frontend uses WBS Design System v1: semantic light palette, shared control/status styles, responsive public service portal and permission-derived admin shell. Existing routes and Go API contracts/authentication/workflows are preserved. No UI package dependency was added. Details: [Phase 6](docs/phase-6.md), [design system](docs/ui-design-system.md), [component inventory](docs/ui-component-inventory.md), [regression checklist](docs/ui-regression-checklist.md).
+
+Verification: `npm run lint`, `npx tsc --noEmit`, `npm test` (42 pass, 4 QA HTTP tests skipped) and `npm run build` passed. Browser spot-check covered public landing/login at 375px. Admin authenticated views and backend-populated public states still need visual QA with an available isolated QA backend/session; see checklist.

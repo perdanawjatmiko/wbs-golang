@@ -48,3 +48,18 @@
 - Tambah server-side typed API client, timeout, shape validation dan UI connectivity dengan loading/success/error.
 - Tambah unit/integration tests serta panduan environment, architecture, API dan development.
 - Tidak mengubah blueprint, tidak menambah business tables/features, tidak melakukan deployment.
+
+## 2026-11-16 — Phase 5 local environment and security hardening (verification incomplete)
+
+- Add three-service local Docker Compose (frontend/backend/worker), multi-stage non-root images, private attachment volume, health CLI, sample config, and read-only smoke helper. PostgreSQL remains external; no database container, auto-migration, or auto-seed.
+- Add additive migration 000005 and bounded PostgreSQL-backed distributed rate admission for login, submission, and tracking; validate trusted proxy configuration and cookie policy; bound worker startup retries and public adapter responses.
+- Add frontend security headers/health route, regression tests, Docker/security documentation, and private audit artifacts.
+- Patch Go toolchain and Node image base to reviewed security releases; application library dependencies unchanged.
+- Verification is incomplete: Docker image extraction failed for lack of storage; target tests/build and runtime/database checks were blocked by audit sandbox/database prerequisites. No production resources or real providers used. See `docs/security-test-results.md`.
+
+## 2026-11-16 — Phase 6 UI/UX overhaul
+
+- Add semantic WBS Design System v1 tokens, responsive portal/admin shell, inline icon and status primitives without adding UI dependencies.
+- Redesign public landing, report/tracking presentation and success states; admin dashboard, report table/detail, master data styling, notification surfaces and login.
+- Preserve all API, permission, authentication, CSRF, tracking privacy, report and notification contracts.
+- Add UI design/navigation tests and design/component/QA documentation. Lint, strict typecheck, frontend tests and production build pass; 4 environment-gated HTTP tests skipped. Visual spot-check limited to 375px public landing/login; authenticated/admin and populated backend states need QA.

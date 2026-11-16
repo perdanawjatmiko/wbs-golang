@@ -45,7 +45,7 @@ export function ReportForm() {
     function change<K extends keyof ReportInput>(key: K, value: ReportInput[K]) { setInput(prev => ({ ...prev, [key]: value })); setErrors(prev => ({ ...prev, [key]: undefined })); }
     const fieldError = (name: keyof FieldErrors) => errors[name] ? <p id={`error-${name}`} className="mt-2 text-sm text-red-700 dark:text-red-400">{errors[name]}</p> : null;
     if (created)
-        return <section aria-live="polite" className="space-y-5 rounded-2xl border border-emerald-300 p-6"><h2 className="text-2xl font-semibold">Laporan berhasil diterima</h2><p>Simpan kode ini dan gunakan contact yang sama untuk tracking.</p><p className="break-all rounded-lg bg-zinc-100 p-4 font-mono text-xl text-zinc-950">{created.report_code}</p><p>Status: {created.status}</p><button className="admin-button-secondary" onClick={async () => { try {
+        return <section aria-live="polite" className="submission-success"><span className="success-mark" aria-hidden="true">✓</span><p className="public-eyebrow">Pengiriman berhasil</p><h2>Laporan berhasil diterima</h2><p>Simpan kode ini dan gunakan contact yang sama untuk tracking.</p><p className="success-code">{created.report_code}</p><p className="success-status">Status awal · {created.status}</p><button className="admin-button-secondary" onClick={async () => { try {
             await navigator.clipboard.writeText(created.report_code);
             setCopyMessage("Kode disalin.");
         }
@@ -53,10 +53,10 @@ export function ReportForm() {
             setCopyMessage("Penyalinan gagal. Pilih kode dan salin secara manual.");
         } }}>Salin kode laporan</button><p role="status">{copyMessage}</p><p>{created.tracking_instructions}</p><Link className="admin-button" href="/tracking">Tracking laporan</Link><p className="text-sm text-zinc-500">Kode tidak disimpan otomatis di browser. Memuat ulang halaman ini tidak mengirim ulang laporan.</p></section>;
     if (catalogError)
-        return <p role="alert">{catalogError} <button className="underline" onClick={() => setRetry(n => n + 1)}>Coba lagi</button></p>;
+        return <section className="public-panel public-error-state" role="alert"><strong>Formulir belum dapat disiapkan</strong><p>{catalogError}</p><button className="admin-button-secondary" onClick={() => setRetry(n => n + 1)}>Coba lagi</button></section>;
     if (!catalog)
-        return <p role="status">Memuat formulir…</p>;
-    return <div className="grid gap-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"><form onSubmit={submit} noValidate className="space-y-6" aria-label="Form laporan publik">
+        return <div className="public-panel public-loading" role="status" aria-label="Memuat formulir laporan"><p>Menyiapkan formulir laporan…</p><span/><span/><span/></div>;
+    return <div className="report-form-layout"><form onSubmit={submit} noValidate className="public-panel public-form-panel" aria-label="Form laporan publik"><h2 className="form-section-title">Informasi laporan</h2>
  <fieldset disabled={busy || uncertain} className="space-y-6"><legend className="sr-only">Detail laporan</legend>
  <label className="block" htmlFor="name">Nama<input id="name" className="admin-input" autoComplete="name" required maxLength={150} value={input.name} aria-invalid={!!errors.name} aria-describedby={errors.name ? "error-name" : undefined} onChange={e => change("name", e.target.value)}/>{fieldError("name")}</label>
  <label className="block" htmlFor="contact-type">Jenis contact<select id="contact-type" className="admin-input" value={input.contact_type} onChange={e => { setInput(prev => switchContact(prev, e.target.value as "EMAIL" | "PHONE")); setErrors(prev => ({ ...prev, contact: undefined })); }}><option value="EMAIL">Email</option><option value="PHONE">Telepon internasional</option></select></label>
@@ -66,5 +66,5 @@ export function ReportForm() {
  {catalog.policy.max_files > 0 && <label className="block" htmlFor="attachment">Attachment (opsional, satu file)<input id="attachment" className="admin-input" type="file" accept={catalog.policy.allowed_types.join(",")} aria-invalid={!!errors.attachment} aria-describedby={errors.attachment ? "attachment-help error-attachment" : "attachment-help"} onChange={e => { setFile(e.target.files?.[0] ?? null); setErrors(prev => ({ ...prev, attachment: undefined })); }}/><span id="attachment-help" className="mt-2 block text-sm text-zinc-500">Maksimum {(catalog.policy.max_file_bytes / 1048576).toFixed(1)} MiB · {catalog.policy.allowed_types.join(", ")}. File diperiksa kembali oleh server.</span>{fieldError("attachment")}</label>}
  <button className="admin-button" disabled={busy || catalog.types.length === 0}>{busy ? "Mengirim laporan…" : "Kirim laporan"}</button></fieldset>
  {error && <p role="alert" className="rounded-xl border border-amber-300 p-4">{error}</p>}{uncertain && <Link className="underline" href="/tracking">Buka tracking</Link>}
- </form><aside><InteractiveFAQ reportType={input.report_type_id}/></aside></div>;
+ </form><aside className="public-panel faq-panel"><InteractiveFAQ reportType={input.report_type_id}/></aside></div>;
 }

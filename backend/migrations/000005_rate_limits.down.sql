@@ -1,0 +1,3 @@
+BEGIN;
+DROP TABLE rate_limit_buckets;
+COMMIT;

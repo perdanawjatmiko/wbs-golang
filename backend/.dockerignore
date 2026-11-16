@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.git
+.security-audit
+bin
+var
+coverage.out
+*.test
+Dockerfile
+.dockerignore
