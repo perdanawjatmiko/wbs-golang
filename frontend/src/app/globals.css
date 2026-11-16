@@ -362,11 +362,13 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .status-context { position: sticky; top: 90px; display: grid; justify-items: start; gap: 10px; padding: 18px; }
 .status-context h2 { margin: 0; }
 .status-context p { margin: 0; color: var(--muted); font-size: 12px; }
-.workflow-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.workflow-grid { display: grid; grid-template-columns: minmax(0, 760px); gap: 16px; }
 .workflow-grid form { align-self: start; }
 .history-panel { display: grid; gap: 14px; padding: 21px; }
 .history-panel ol { margin: 0; }
 .history-panel > nav { margin-top: 10px; }
+.history-note-form { padding-top: 14px; border-top: 1px solid var(--border); }
+.history-note-form form { max-width: 760px; }
 .action-feedback { padding: 12px 15px; border: 1px solid #99f6e4; border-radius: 9px; background: #f0fdfa; color: #115e59 !important; font-size: 13px; }
 .admin-content .admin-panel { border-radius: 12px; }
 .admin-content textarea { resize: vertical; }

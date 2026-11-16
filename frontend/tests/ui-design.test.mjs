@@ -72,7 +72,7 @@ test('all WBS select controls use the shadcn NativeSelect while preserving nativ
   ];
   for (const file of files) {
     const source = read(file);
-    assert.ok(source.includes('NativeSelect, NativeSelectOption'), file);
+    assert.ok(source.includes('NativeSelect') && source.includes('NativeSelectOption') && source.includes('@/components/ui/native-select'), file);
     assert.ok(!/<select\b|<option\b/.test(source), file);
   }
   const css = read('app/globals.css');
