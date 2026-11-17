@@ -214,7 +214,7 @@ function WorkflowForm({
 }
 export function ReportSummary({ report }: { report: ReportDetail }) {
   return (
-    <div className="report-detail-grid">
+    <div className="w-full">
       <div className="report-detail-main">
         <section className="admin-panel report-overview">
           <div className="report-overview-heading">
@@ -280,13 +280,13 @@ export function ReportSummary({ report }: { report: ReportDetail }) {
           </div>
         </section>
       </div>
-      <aside className="report-detail-side">
+      {/* <aside className="report-detail-side">
         <section className="admin-panel status-context">
           <h2>Status saat ini</h2>
           <StatusBadge status={report.status} />
           <p>Perubahan status tercatat dalam riwayat laporan.</p>
         </section>
-      </aside>
+      </aside> */}
     </div>
   );
 }
@@ -361,68 +361,70 @@ export function AdminReportDetail({
       ) : (
         <>
           <ReportSummary report={report} />
-          {canUpdate && (
-            <aside key={report.updated_at + revision} className="workflow-grid">
-              <WorkflowForm
-                report={report}
-                csrf={csrf}
-                notes={false}
-                onDone={() => refresh("Status berhasil disimpan.")}
-                onConflict={refresh}
-              />
-            </aside>
-          )}
-          <section className="admin-panel history-panel">
-            <div className="section-heading">
-              <div>
-                <h2>Riwayat aktivitas</h2>
-                <p>Catatan internal hanya terlihat oleh administrator.</p>
-              </div>
-              {canUpdate && (
-                <button
-                  type="button"
-                  className="admin-button-secondary"
-                  aria-expanded={showNoteForm}
-                  aria-controls="report-note-form"
-                  onClick={() => setShowNoteForm((visible) => !visible)}
-                >
-                  {showNoteForm ? "Tutup form catatan" : "Tambah catatan"}
-                </button>
-              )}
-            </div>
-            {report.histories.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon" aria-hidden="true">
-                  —
-                </span>
-                <h3>Belum ada aktivitas</h3>
-                <p>Laporan dibuat dengan status Open.</p>
-              </div>
-            ) : (
-              <AdminHistoryTimeline histories={report.histories} />
-            )}
-            {canUpdate && showNoteForm && (
-              <div id="report-note-form" className="history-note-form">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            {canUpdate && (
+              <aside key={report.updated_at + revision} className="col-span-1">
                 <WorkflowForm
                   report={report}
                   csrf={csrf}
-                  notes
-                  onDone={() => {
-                    setShowNoteForm(false);
-                    refresh("Catatan berhasil disimpan.");
-                  }}
+                  notes={false}
+                  onDone={() => refresh("Status berhasil disimpan.")}
                   onConflict={refresh}
                 />
-              </div>
+              </aside>
             )}
-            <PageControls
-              meta={report.history_pagination}
-              onPage={(page) => {
-                setLoading(true);
-                setHistoryPage(page);
-              }}
-            />
-          </section>
+            <section className="admin-panel history-panel col-span-2">
+              <div className="section-heading">
+                <div>
+                  <h2>Riwayat aktivitas</h2>
+                  <p>Catatan internal hanya terlihat oleh administrator.</p>
+                </div>
+                {canUpdate && (
+                  <button
+                    type="button"
+                    className="admin-button-secondary"
+                    aria-expanded={showNoteForm}
+                    aria-controls="report-note-form"
+                    onClick={() => setShowNoteForm((visible) => !visible)}
+                  >
+                    {showNoteForm ? "Tutup form catatan" : "Tambah catatan"}
+                  </button>
+                )}
+              </div>
+              {report.histories.length === 0 ? (
+                <div className="empty-state">
+                  <span className="empty-icon" aria-hidden="true">
+                    —
+                  </span>
+                  <h3>Belum ada aktivitas</h3>
+                  <p>Laporan dibuat dengan status Open.</p>
+                </div>
+              ) : (
+                <AdminHistoryTimeline histories={report.histories} />
+              )}
+              {canUpdate && showNoteForm && (
+                <div id="report-note-form" className="history-note-form">
+                  <WorkflowForm
+                    report={report}
+                    csrf={csrf}
+                    notes
+                    onDone={() => {
+                      setShowNoteForm(false);
+                      refresh("Catatan berhasil disimpan.");
+                    }}
+                    onConflict={refresh}
+                  />
+                </div>
+              )}
+              <PageControls
+                meta={report.history_pagination}
+                onPage={(page) => {
+                  setLoading(true);
+                  setHistoryPage(page);
+                }}
+              />
+            </section>
+          </div>
         </>
       )}
     </div>

@@ -2,8 +2,10 @@ export type ContactType = "EMAIL" | "PHONE";
 export type ReportStatus = "Open" | "On Progress" | "Done" | "Rejected";
 export type ReportType = {
     id: string;
+    parent_id: string | null;
     name: string;
     description: string;
+    is_active: boolean;
 };
 export type FAQ = {
     id: string;
@@ -28,6 +30,7 @@ export type ReportInput = {
     name: string;
     contact: string;
     contact_type: ContactType;
+    report_parent_id: string;
     report_type_id: string;
     detail: string;
 };
@@ -93,8 +96,12 @@ export function validateReport(input: ReportInput, file: {
     const contact = contactError(input.contact_type, input.contact);
     if (contact)
         errors.contact = contact;
-    if (!types.some(type => type.id === input.report_type_id))
-        errors.report_type_id = "Pilih jenis laporan yang tersedia.";
+    const parent = types.find(type => type.id === input.report_parent_id && type.parent_id === null && type.is_active);
+    const child = types.find(type => type.id === input.report_type_id && type.parent_id === input.report_parent_id && type.is_active);
+    if (!parent)
+        errors.report_parent_id = "Pilih kategori induk yang tersedia.";
+    if (!child)
+        errors.report_type_id = "Pilih subkategori aktif pada kategori induk.";
     if (!input.detail.trim() || Array.from(input.detail.trim()).length > 20000)
         errors.detail = "Detail wajib diisi (maksimum 20.000 karakter).";
     const attachment = fileError(file, policy);

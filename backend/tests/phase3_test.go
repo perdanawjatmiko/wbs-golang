@@ -62,12 +62,11 @@ func phase3DB(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(func() {
 		pool.Close()
-		if err := migration.Run(ctx, u.String(), "down"); err != nil {
+		// This generated schema is disposable. Migration 000006 intentionally refuses
+		// a lossy hierarchy down migration, so remove only this isolated test schema.
+		if _, err := root.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
 			t.Error(err)
-			return
 		}
-		_, _ = root.Exec(ctx, "DROP TABLE "+schema+".schema_migrations")
-		_, _ = root.Exec(ctx, "DROP SCHEMA "+schema)
 		root.Close()
 	})
 	return pool
@@ -141,8 +140,11 @@ func TestPhase3Integration(t *testing.T) {
 		}
 	})
 	var typeID, type2 string
-	_ = pool.QueryRow(ctx, `INSERT INTO report_types(name) VALUES('Workflow Type') RETURNING id::text`).Scan(&typeID)
+	var parentID string
+	_ = pool.QueryRow(ctx, `INSERT INTO report_types(name) VALUES('Workflow Type') RETURNING id::text`).Scan(&parentID)
+	_ = pool.QueryRow(ctx, `INSERT INTO report_types(parent_id,name) VALUES($1,'Workflow Child') RETURNING id::text`, parentID).Scan(&typeID)
 	_ = pool.QueryRow(ctx, `INSERT INTO report_types(name) VALUES('Second Type') RETURNING id::text`).Scan(&type2)
+	testReportParentID = parentID
 	create := func(contact, status string, file *filestore.File) (string, reports.Created) {
 		t.Helper()
 		created, err := public.Submit(ctx, inputFor(typeID, contact), file)

@@ -47,3 +47,6 @@ Permissions are independent. API writer-only roles cannot read report detail, co
 ## Phase4 permissions
 
 report.view: own inbox/list/unread/read/read-all/SSE, with live session and current DB permission checks. notifications.manage: delivery list/detail/metrics/manual retry. Seed grants this only to Super Admin by default; existing role management may explicitly delegate. Investigators do not receive it automatically. Retry also requires CSRF and an available bounded attempt; inbox read always constrains current admin_id. SSE rechecks authorization each batch and stops on revocation/inactivity/session expiry.
+# Phase 7 import and template access
+
+XLSX template/export/preview/commit inherit the existing resource permission enforced by the same authenticated admin route group. User import/export remains Super Admin-only according to the existing `users.manage` resource policy; report type and FAQ management use their existing master-data permissions. No new permission is granted to ordinary roles. Email template editor pages and API routes retain `email-templates.manage`; backend authorization remains authoritative.

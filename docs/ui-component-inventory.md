@@ -33,3 +33,9 @@ No API routes, permission policy, data fields, workflows, report content, or bac
 ## shadcn/ui layer (Phase 6F)
 
 `components.json` configures the official CLI for the existing Tailwind v4 CSS file, Geist-based app, `@/*` aliases, CSS variables, and the Radix-backed New York component source. AlertDialog/Button are used for destructive confirmation; NativeSelect wraps a real HTML `<select>` and is used for every select control. Text inputs, textareas, checkboxes, WBS `StatusBadge`, notification popover, data tables, cards, and business forms remain local because they are already contract-specific or have no clear migration benefit. Do not replace these wholesale.
+# Phase 7 additions
+
+- shadcn/Radix Dialog primitives are used for existing admin master-data create/edit and XLSX preview interactions; AlertDialog remains used for destructive confirmations.
+- `ImportExport` provides template, export, bounded preview/error rows, and explicit commit confirmation for users, report types, and FAQs.
+- `EmailTemplateEditor` is a dedicated Tiptap create/edit page; the editor is business-specific and not a modal.
+- Public reporting uses parent then child NativeSelect controls and filters FAQ to general plus selected parent category. Existing report forms, status/timeline components, attachment access, and notification UI retain their existing contracts.

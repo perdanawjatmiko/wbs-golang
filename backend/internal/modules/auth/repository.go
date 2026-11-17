@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
+	"wbs-golang/backend/internal/platform/security"
 )
 
 const AdminLock int64 = 761983221
@@ -14,12 +15,13 @@ type Querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 type Principal struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Email       string   `json:"email"`
-	RoleID      string   `json:"role_id"`
-	RoleName    string   `json:"role_name"`
-	Permissions []string `json:"permissions"`
+	ID                 string   `json:"id"`
+	Name               string   `json:"name"`
+	Email              string   `json:"email"`
+	RoleID             string   `json:"role_id"`
+	RoleName           string   `json:"role_name"`
+	Permissions        []string `json:"permissions"`
+	MustChangePassword bool     `json:"must_change_password"`
 }
 
 func (p Principal) Super() bool { return p.RoleName == "Super Admin" }
@@ -36,7 +38,7 @@ func (p Principal) Can(permission string) bool {
 }
 func Resolve(ctx context.Context, q Querier, id string) (Principal, error) {
 	var p Principal
-	err := q.QueryRow(ctx, `SELECT u.id::text,u.name,u.email,u.role_id::text,r.name,COALESCE(array_agg(p.slug ORDER BY p.slug) FILTER(WHERE p.slug IS NOT NULL),'{}') FROM admin_users u JOIN roles r ON r.id=u.role_id LEFT JOIN role_permissions rp ON rp.role_id=r.id LEFT JOIN permissions p ON p.id=rp.permission_id WHERE u.id=$1 AND u.is_active GROUP BY u.id,r.id`, id).Scan(&p.ID, &p.Name, &p.Email, &p.RoleID, &p.RoleName, &p.Permissions)
+	err := q.QueryRow(ctx, `SELECT u.id::text,u.name,u.email,u.role_id::text,r.name,COALESCE(array_agg(p.slug ORDER BY p.slug) FILTER(WHERE p.slug IS NOT NULL),'{}'),u.must_change_password FROM admin_users u JOIN roles r ON r.id=u.role_id LEFT JOIN role_permissions rp ON rp.role_id=r.id LEFT JOIN permissions p ON p.id=rp.permission_id WHERE u.id=$1 AND u.is_active GROUP BY u.id,r.id`, id).Scan(&p.ID, &p.Name, &p.Email, &p.RoleID, &p.RoleName, &p.Permissions, &p.MustChangePassword)
 	return p, err
 }
 
@@ -77,7 +79,7 @@ func (r *Repository) CreateSession(ctx context.Context, id, expectedHash string,
 }
 func (r *Repository) Session(ctx context.Context, hash []byte) (Principal, error) {
 	var id string
-	err := r.Pool.QueryRow(ctx, `SELECT s.admin_id::text FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_id WHERE s.token_hash=$1 AND s.expires_at>now() AND s.revoked_at IS NULL AND u.is_active`, hash).Scan(&id)
+	err := r.Pool.QueryRow(ctx, `SELECT s.admin_id::text FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_id WHERE s.token_hash=$1 AND s.expires_at>now() AND s.revoked_at IS NULL AND u.is_active AND (NOT u.must_change_password OR u.temporary_credential_expires_at IS NULL OR u.temporary_credential_expires_at>now())`, hash).Scan(&id)
 	if err != nil {
 		return Principal{}, err
 	}
@@ -86,4 +88,28 @@ func (r *Repository) Session(ctx context.Context, hash []byte) (Principal, error
 func (r *Repository) Revoke(ctx context.Context, hash []byte) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE admin_sessions SET revoked_at=now() WHERE token_hash=$1 AND revoked_at IS NULL`, hash)
 	return err
+}
+
+func (r *Repository) ChangePassword(ctx context.Context, id, current, nextHash string) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var stored string
+	var mustChange bool
+	var expires *time.Time
+	if err = tx.QueryRow(ctx, `SELECT password_hash,must_change_password,temporary_credential_expires_at FROM admin_users WHERE id=$1 AND is_active FOR UPDATE`, id).Scan(&stored, &mustChange, &expires); err != nil {
+		return err
+	}
+	if !security.Verify(stored, current) || (mustChange && expires != nil && !expires.After(time.Now())) {
+		return pgx.ErrNoRows
+	}
+	if _, err = tx.Exec(ctx, `UPDATE admin_users SET password_hash=$2,must_change_password=false,temporary_credential_expires_at=NULL,updated_at=now() WHERE id=$1`, id, nextHash); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE admin_sessions SET revoked_at=now() WHERE admin_id=$1 AND revoked_at IS NULL`, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

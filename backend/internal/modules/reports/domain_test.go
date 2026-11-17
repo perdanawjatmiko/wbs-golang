@@ -49,7 +49,7 @@ func TestCode(t *testing.T) {
 	}
 }
 func TestReportValidation(t *testing.T) {
-	valid := Submission{Name: " Name ", Contact: " User@example.test ", ContactType: "EMAIL", ReportTypeID: "00000000-0000-0000-0000-000000000001", Detail: " Details "}
+	valid := Submission{Name: " Name ", Contact: " User@example.test ", ContactType: "EMAIL", ReportParentID: "00000000-0000-0000-0000-000000000002", ReportTypeID: "00000000-0000-0000-0000-000000000001", Detail: " Details "}
 	out, err := Validate(valid)
 	if err != nil || out.Name != "Name" || out.Detail != "Details" {
 		t.Fatal(out, err)

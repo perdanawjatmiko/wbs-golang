@@ -121,7 +121,7 @@ func (h *Handler) multipart(c *gin.Context) (Submission, *filestore.File, error)
 		return input, nil, problem.New(415, "MULTIPART_REQUIRED", "Gunakan multipart/form-data.")
 	}
 	seen := map[string]bool{}
-	fields := map[string]*string{"name": &input.Name, "contact": &input.Contact, "contact_type": &input.ContactType, "report_type_id": &input.ReportTypeID, "detail": &input.Detail}
+	fields := map[string]*string{"name": &input.Name, "contact": &input.Contact, "contact_type": &input.ContactType, "report_parent_id": &input.ReportParentID, "report_type_id": &input.ReportTypeID, "detail": &input.Detail}
 	for count := 0; ; count++ {
 		part, err := reader.NextPart()
 		if err == io.EOF {
@@ -134,7 +134,7 @@ func (h *Handler) multipart(c *gin.Context) (Submission, *filestore.File, error)
 			}
 			return input, file, problem.New(400, "INVALID_MULTIPART", "Multipart request tidak valid.")
 		}
-		if count >= 6 {
+		if count >= 7 {
 			return input, file, validation("request", "Terlalu banyak field atau attachment.")
 		}
 		name := part.FormName()

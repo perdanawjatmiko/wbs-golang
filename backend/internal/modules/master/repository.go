@@ -20,12 +20,15 @@ func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool} }
 func selection(e Entity, public bool) string {
 	if public {
 		if e.Path == "report-types" {
-			return `jsonb_build_object('id',t.id,'name',t.name,'description',t.description)`
+			return `jsonb_build_object('id',t.id,'name',t.name,'description',t.description,'parent_id',t.parent_id,'is_active',t.is_active)`
 		}
 		return `jsonb_build_object('id',t.id,'report_type_id',t.report_type_id,'question',t.question,'answer',t.answer,'sort_order',t.sort_order)`
 	}
+	if e.Path == "report-types" {
+		return `to_jsonb(t)||jsonb_build_object('parent_name',(SELECT p.name FROM report_types p WHERE p.id=t.parent_id))`
+	}
 	if e.Path == "users" {
-		return `to_jsonb(t)-'password_hash'`
+		return `to_jsonb(t)-'password_hash'-'temporary_credential_expires_at'`
 	}
 	if e.Path == "roles" {
 		return `to_jsonb(t)||jsonb_build_object('permission_ids',COALESCE((SELECT jsonb_agg(rp.permission_id ORDER BY rp.permission_id) FROM role_permissions rp WHERE rp.role_id=t.id),'[]'::jsonb))`
@@ -46,6 +49,9 @@ func (r *Repository) List(ctx context.Context, e Entity, q Query) (Page, error) 
 	}
 	if q.Public {
 		where = append(where, "t.is_active")
+		if e.Path == "report-types" {
+			where = append(where, `(t.parent_id IS NULL OR EXISTS(SELECT 1 FROM report_types p WHERE p.id=t.parent_id AND p.is_active))`)
+		}
 		if e.Path == "faqs" {
 			where = append(where, `(t.report_type_id IS NULL OR EXISTS(SELECT 1 FROM report_types rt WHERE rt.id=t.report_type_id AND rt.is_active))`)
 		}
@@ -65,6 +71,9 @@ func (r *Repository) List(ctx context.Context, e Entity, q Query) (Page, error) 
 		return result, err
 	}
 	order := "t.id"
+	if e.Path == "report-types" {
+		order = "t.parent_id NULLS FIRST,lower(t.name),t.id"
+	}
 	if e.Path == "faqs" {
 		order = "t.sort_order,t.id"
 	}

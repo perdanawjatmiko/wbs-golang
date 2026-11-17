@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminApiError, adminRequest } from "./client";
 import type { PageData, Row } from "./contracts";
 
@@ -321,15 +322,16 @@ export function RolesManagementPage({ csrf }: { csrf: string }) {
           </nav>
         </>
       )}
-      {editing !== undefined && (
+      <Dialog open={editing !== undefined} onOpenChange={(openState) => { if (!openState && !saving) setEditing(undefined); }}>
+      {editing !== undefined && <DialogContent>
         <form
           onSubmit={save}
-          className="space-y-5 rounded-xl border border-slate-300 p-6"
+          className="space-y-5"
           aria-label={editing ? "Edit role" : "Tambah role"}
         >
-          <h2 className="text-xl font-semibold">
+          <DialogHeader><DialogTitle>
             {editing ? "Edit role" : "Tambah role"}
-          </h2>
+          </DialogTitle><DialogDescription>Atur nama, deskripsi, dan hak akses role.</DialogDescription></DialogHeader>
           <label className="block">
             Nama <span aria-hidden="true">*</span>
             <input
@@ -389,7 +391,8 @@ export function RolesManagementPage({ csrf }: { csrf: string }) {
             </button>
           </div>
         </form>
-      )}
+      </DialogContent>}
+      </Dialog>
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(openState) => {

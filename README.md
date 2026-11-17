@@ -1,6 +1,10 @@
 # WBS & Ticketing Application
 
-Phase 4: notifikasi multi-channel, workflow admin, pelaporan publik, tracking, dan administrasi untuk Whistleblowing System & Ticketing Application. Spesifikasi bisnis hanya berasal dari [project_blueprint.md](project_blueprint.md). Sudah tersedia admin authentication, RBAC, master CRUD, dan complete database schema. Submission dan tracking publik sudah tersedia. Workflow status admin, history, notes, dan dashboard sudah tersedia. Notifikasi email SMTP asynchronous, Telegram alert laporan baru, inbox admin dan SSE durable sudah tersedia.
+## Phase 7 status
+
+Phase 7 work adds two-level report type categories with legacy compatibility, parent-scoped FAQs, master-data XLSX preview/import/export, admin password-change-on-first-use metadata, and dedicated rich email-template editing. See [Phase 7](docs/phase-7.md) and its database/import/security reports before applying migration `000006`. Do not apply it to an unidentified or production database. Import-created accounts are inactive until an administrator sets credentials through an approved secure process.
+
+WBS is a Whistleblowing System & Ticketing application. The original business baseline is in [project_blueprint.md](project_blueprint.md); approved phase enhancements are recorded separately. Admin authentication/RBAC, master data, public submission/tracking, admin workflow, histories, private attachments, transactional notifications, worker, and SSE are implemented. Phase 7 adds hierarchical report types, parent-scoped FAQs, XLSX master-data import/export, and rich email-template editing; see [docs/phase-7.md](docs/phase-7.md) for migration and provisioning limitations.
 
 Stack: Go 1.26.11, Gin 1.12.0, PostgreSQL dengan pgx/v5; Next.js 16.4.6 App Router, React 19.3.0, TypeScript strict, Tailwind 4.3.3. Konfigurasi frontend existing dipertahankan.
 

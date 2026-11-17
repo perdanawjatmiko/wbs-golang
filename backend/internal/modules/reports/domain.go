@@ -81,11 +81,12 @@ func FormatCode(created time.Time, zone *time.Location, prefix string, seq int64
 }
 
 type Submission struct {
-	Name         string `json:"name"`
-	Contact      string `json:"contact"`
-	ContactType  string `json:"contact_type"`
-	ReportTypeID string `json:"report_type_id"`
-	Detail       string `json:"detail"`
+	Name           string `json:"name"`
+	Contact        string `json:"contact"`
+	ContactType    string `json:"contact_type"`
+	ReportParentID string `json:"report_parent_id"`
+	ReportTypeID   string `json:"report_type_id"`
+	Detail         string `json:"detail"`
 }
 type Created struct {
 	ReportCode           string    `json:"report_code"`
@@ -103,14 +104,16 @@ type Event struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 type Tracked struct {
-	ReportCode string    `json:"report_code"`
-	Name       string    `json:"name"`
-	ReportType string    `json:"report_type"`
-	Detail     string    `json:"detail"`
-	Status     string    `json:"status"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	Timeline   []Event   `json:"timeline"`
+	ReportCode       string    `json:"report_code"`
+	Name             string    `json:"name"`
+	ReportType       string    `json:"report_type"`
+	ReportTypeParent string    `json:"report_type_parent"`
+	ReportTypeChild  string    `json:"report_type_child,omitempty"`
+	Detail           string    `json:"detail"`
+	Status           string    `json:"status"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Timeline         []Event   `json:"timeline"`
 }
 
 func validation(field, message string) error {
@@ -127,7 +130,7 @@ func Validate(input Submission) (Submission, error) {
 			return input, validation(v.field, "Wajib diisi dan panjang tidak valid.")
 		}
 	}
-	if !security.UUID.MatchString(input.ReportTypeID) {
+	if !security.UUID.MatchString(input.ReportParentID) || !security.UUID.MatchString(input.ReportTypeID) {
 		return input, validation("report_type_id", "Jenis laporan tidak valid.")
 	}
 	contact, err := NormalizeContact(input.ContactType, input.Contact)

@@ -74,3 +74,23 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	defer cancel()
 	return s.repo.Revoke(ctx, security.HashToken(token))
 }
+
+type PasswordChanger interface {
+	ChangePassword(context.Context, string, string, string) error
+}
+
+func (s *Service) ChangePassword(ctx context.Context, repo PasswordChanger, id, current, next string) error {
+	hash, err := security.HashPassword(next)
+	if err != nil {
+		return problem.New(422, "VALIDATION_ERROR", "Password baru harus 12–72 byte.")
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	if err := repo.ChangePassword(ctx, id, current, hash); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return problem.New(401, "INVALID_CREDENTIALS", "Password saat ini tidak valid atau kredensial sementara kedaluwarsa.")
+		}
+		return err
+	}
+	return nil
+}

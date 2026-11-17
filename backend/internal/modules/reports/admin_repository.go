@@ -10,10 +10,10 @@ import (
 	"wbs-golang/backend/internal/modules/notifications"
 )
 
-const adminColumns = `r.id::text,r.code,r.name,r.contact,r.report_type_id::text,rt.name,r.status,r.created_at,r.updated_at`
+const adminColumns = `r.id::text,r.code,r.name,r.contact,r.report_type_id::text,CASE WHEN rt.parent_id IS NULL THEN rt.name ELSE p.name||' / '||rt.name END,r.status,r.created_at,r.updated_at,COALESCE(p.name,rt.name),CASE WHEN rt.parent_id IS NULL THEN '' ELSE rt.name END`
 
 func itemTargets(item *AdminItem) []any {
-	return []any{&item.ID, &item.Code, &item.ReporterName, &item.Contact, &item.ReportTypeID, &item.ReportType, &item.Status, &item.CreatedAt, &item.UpdatedAt}
+	return []any{&item.ID, &item.Code, &item.ReporterName, &item.Contact, &item.ReportTypeID, &item.ReportType, &item.Status, &item.CreatedAt, &item.UpdatedAt, &item.ReportTypeParent, &item.ReportTypeChild}
 }
 func rollback(ctx context.Context, tx pgx.Tx) {
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
@@ -70,7 +70,7 @@ func (r *Repository) AdminList(ctx context.Context, q AdminQuery) (AdminList, er
 		return result, validation("direction", "Urutan tidak valid.")
 	}
 	args = append(args, q.PerPage, (q.Page-1)*q.PerPage)
-	rows, err := tx.Query(ctx, "SELECT "+adminColumns+" FROM reports r JOIN report_types rt ON rt.id=r.report_type_id WHERE "+where+" ORDER BY "+column+" "+direction+",r.id "+direction+fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args)), args...)
+	rows, err := tx.Query(ctx, "SELECT "+adminColumns+" FROM reports r JOIN report_types rt ON rt.id=r.report_type_id LEFT JOIN report_types p ON p.id=rt.parent_id WHERE "+where+" ORDER BY "+column+" "+direction+",r.id "+direction+fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args)), args...)
 	if err != nil {
 		return result, err
 	}
@@ -98,7 +98,7 @@ func (r *Repository) AdminDetail(ctx context.Context, id string, page, size int)
 	result := AdminDetail{Histories: []AdminHistory{}}
 	var key *string
 	targets := append(itemTargets(&result.AdminItem), &result.ContactType, &result.Detail, &key)
-	if err = tx.QueryRow(ctx, "SELECT "+adminColumns+",r.contact_type,r.detail,r.attachment_url FROM reports r JOIN report_types rt ON rt.id=r.report_type_id WHERE r.id=$1", id).Scan(targets...); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT "+adminColumns+",r.contact_type,r.detail,r.attachment_url FROM reports r JOIN report_types rt ON rt.id=r.report_type_id LEFT JOIN report_types p ON p.id=rt.parent_id WHERE r.id=$1", id).Scan(targets...); err != nil {
 		return result, nil, err
 	}
 	var total int
@@ -189,7 +189,7 @@ func (r *Repository) Dashboard(ctx context.Context, limit int) (Dashboard, error
 	if err != nil {
 		return d, err
 	}
-	rows, err = tx.Query(ctx, "SELECT "+adminColumns+" FROM reports r JOIN report_types rt ON rt.id=r.report_type_id ORDER BY r.created_at DESC,r.id DESC LIMIT $1", limit)
+	rows, err = tx.Query(ctx, "SELECT "+adminColumns+" FROM reports r JOIN report_types rt ON rt.id=r.report_type_id LEFT JOIN report_types p ON p.id=rt.parent_id ORDER BY r.created_at DESC,r.id DESC LIMIT $1", limit)
 	if err != nil {
 		return d, err
 	}

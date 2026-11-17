@@ -25,6 +25,7 @@ const empty: ReportInput = {
   name: "",
   contact: "",
   contact_type: "EMAIL",
+  report_parent_id: "",
   report_type_id: "",
   detail: "",
 };
@@ -236,33 +237,43 @@ export function ReportForm() {
             </span>
             {fieldError("contact")}
           </label>
-          <label className="block" htmlFor="report-type">
-            Jenis laporan
+          <label className="block" htmlFor="report-parent-type">
+            Kategori laporan
             <NativeSelect
-              id="report-type"
+              id="report-parent-type"
               className="admin-input"
               required
-              value={input.report_type_id}
-              aria-invalid={!!errors.report_type_id}
-              aria-describedby={
-                errors.report_type_id ? "error-report_type_id" : undefined
-              }
-              onChange={(e) => change("report_type_id", e.target.value)}
+              value={input.report_parent_id}
+              aria-invalid={!!errors.report_parent_id}
+              aria-describedby={errors.report_parent_id ? "error-report_parent_id" : undefined}
+              onChange={(e) => {
+                change("report_parent_id", e.target.value);
+                change("report_type_id", "");
+              }}
             >
               <NativeSelectOption value="">
-                Pilih jenis laporan
+                Pilih kategori laporan
               </NativeSelectOption>
-              {catalog.types.map((type) => (
+              {catalog.types.filter((type) => type.parent_id === null && type.is_active && catalog.types.some((child) => child.parent_id === type.id && child.is_active)).map((type) => (
                 <NativeSelectOption key={type.id} value={type.id}>
                   {type.name}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            {fieldError("report_type_id")}
+            {fieldError("report_parent_id")}
           </label>
-          {catalog.types.length === 0 && (
+          {input.report_parent_id && <label className="block" htmlFor="report-type">
+            Subkategori laporan
+            <NativeSelect id="report-type" className="admin-input" required value={input.report_type_id} aria-invalid={!!errors.report_type_id} aria-describedby={errors.report_type_id ? "error-report_type_id" : undefined} onChange={(e) => change("report_type_id", e.target.value)}>
+              <NativeSelectOption value="">Pilih subkategori</NativeSelectOption>
+              {catalog.types.filter((type) => type.parent_id === input.report_parent_id && type.is_active).map((type) => <NativeSelectOption key={type.id} value={type.id}>{type.name}</NativeSelectOption>)}
+            </NativeSelect>
+            {!catalog.types.some((type) => type.parent_id === input.report_parent_id && type.is_active) && <span className="mt-2 block text-sm text-amber-800">Belum ada subkategori aktif pada kategori ini.</span>}
+            {fieldError("report_type_id")}
+          </label>}
+          {catalog.types.filter((type) => type.parent_id === null && type.is_active && catalog.types.some((child) => child.parent_id === type.id && child.is_active)).length === 0 && (
             <p role="status">
-              Belum ada jenis laporan aktif. Hubungi pengelola.
+              Belum ada kategori dengan subkategori aktif. Hubungi pengelola.
             </p>
           )}
           <label className="block" htmlFor="detail">
@@ -329,7 +340,7 @@ export function ReportForm() {
         )}
       </form>
       <aside className="public-panel faq-panel">
-        <InteractiveFAQ reportType={input.report_type_id} />
+        <InteractiveFAQ reportType={input.report_parent_id} />
       </aside>
     </div>
   );

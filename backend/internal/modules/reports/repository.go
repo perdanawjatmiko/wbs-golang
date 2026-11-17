@@ -47,9 +47,10 @@ func (r *Repository) Insert(ctx context.Context, input Submission, attachment *s
 	if active >= ActiveLimit {
 		return Created{}, problem.New(409, "REPORT_ACTIVE_LIMIT_REACHED", "Anda telah mencapai batas maksimal 5 laporan aktif.")
 	}
-	var valid bool
-	err = tx.QueryRow(ctx, `SELECT is_active FROM report_types WHERE id=$1 FOR SHARE`, input.ReportTypeID).Scan(&valid)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !valid) {
+	var parentID string
+	var childActive, parentActive bool
+	err = tx.QueryRow(ctx, `SELECT child.parent_id::text,child.is_active,parent.is_active FROM report_types child JOIN report_types parent ON parent.id=child.parent_id WHERE child.id=$1 AND parent.id=$2 FOR KEY SHARE OF child,parent`, input.ReportTypeID, input.ReportParentID).Scan(&parentID, &childActive, &parentActive)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (!childActive || !parentActive || parentID != input.ReportParentID)) {
 		return Created{}, validation("report_type_id", "Jenis laporan tidak tersedia.")
 	}
 	if err != nil {
@@ -107,7 +108,7 @@ func (e *CommitError) Unwrap() error { return e.Cause }
 func (r *Repository) Track(ctx context.Context, code, kind, contact string) (Tracked, error) {
 	var result Tracked
 	var timeline []byte
-	err := r.pool.QueryRow(ctx, `SELECT r.code,r.name,rt.name,r.detail,r.status,r.created_at,r.updated_at,COALESCE((SELECT jsonb_agg(jsonb_build_object('new_status',h.new_status,'external_note',h.external_note,'created_at',h.created_at) ORDER BY h.created_at,h.id) FROM report_histories h WHERE h.report_id=r.id AND (h.old_status<>h.new_status OR btrim(h.external_note)<>'')),'[]'::jsonb) FROM reports r JOIN report_types rt ON rt.id=r.report_type_id WHERE r.code=$1 AND r.contact_type=$2 AND r.contact=$3`, code, kind, contact).Scan(&result.ReportCode, &result.Name, &result.ReportType, &result.Detail, &result.Status, &result.CreatedAt, &result.UpdatedAt, &timeline)
+	err := r.pool.QueryRow(ctx, `SELECT r.code,r.name,CASE WHEN rt.parent_id IS NULL THEN rt.name ELSE p.name||' / '||rt.name END,COALESCE(p.name,rt.name),CASE WHEN rt.parent_id IS NULL THEN '' ELSE rt.name END,r.detail,r.status,r.created_at,r.updated_at,COALESCE((SELECT jsonb_agg(jsonb_build_object('new_status',h.new_status,'external_note',h.external_note,'created_at',h.created_at) ORDER BY h.created_at,h.id) FROM report_histories h WHERE h.report_id=r.id AND (h.old_status<>h.new_status OR btrim(h.external_note)<>'')),'[]'::jsonb) FROM reports r JOIN report_types rt ON rt.id=r.report_type_id LEFT JOIN report_types p ON p.id=rt.parent_id WHERE r.code=$1 AND r.contact_type=$2 AND r.contact=$3`, code, kind, contact).Scan(&result.ReportCode, &result.Name, &result.ReportType, &result.ReportTypeParent, &result.ReportTypeChild, &result.Detail, &result.Status, &result.CreatedAt, &result.UpdatedAt, &timeline)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return result, NotFound()
 	}

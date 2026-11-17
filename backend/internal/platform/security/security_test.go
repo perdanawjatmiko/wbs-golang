@@ -40,4 +40,12 @@ func TestTemplate(t *testing.T) {
 			t.Fatal("unsafe placeholder accepted")
 		}
 	}
+	formatted, err := Template("Subject", `<p><u>Important</u> <a href="https://example.test/help">Help</a> {{report_code}}</p>`)
+	if err != nil || !strings.Contains(formatted, "<u>") || !strings.Contains(formatted, `href="https://example.test/help"`) {
+		t.Fatal("safe rich formatting was not preserved", formatted, err)
+	}
+	unsafeLink, err := Template("Subject", `<p><a href="data:text/html,alert(1)">unsafe</a></p>`)
+	if err != nil || strings.Contains(unsafeLink, "href=") {
+		t.Fatal("unsafe link was preserved", unsafeLink, err)
+	}
 }

@@ -3,6 +3,8 @@ package master
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"time"
 	"wbs-golang/backend/internal/modules/auth"
 	"wbs-golang/backend/internal/platform/problem"
@@ -103,6 +105,39 @@ func (s *Service) Mutate(ctx context.Context, actor auth.Principal, e Entity, id
 			return nil, err
 		}
 	}
+	if e.Path == "report-types" {
+		if parentID, ok := values["parent_id"].(string); ok {
+			var parentIsRoot bool
+			err = tx.tx.QueryRow(ctx, `SELECT parent_id IS NULL FROM report_types WHERE id=$1 FOR KEY SHARE`, parentID).Scan(&parentIsRoot)
+			if errors.Is(err, pgx.ErrNoRows) || (err == nil && !parentIsRoot) {
+				return nil, problem.New(422, "INVALID_REPORT_TYPE_PARENT", "Parent harus merupakan kategori induk yang tersedia.")
+			}
+			if err != nil {
+				return nil, err
+			}
+			if id != "" {
+				var hasDependents bool
+				if err = tx.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reports WHERE report_type_id=$1) OR EXISTS(SELECT 1 FROM faqs WHERE report_type_id=$1) OR EXISTS(SELECT 1 FROM report_types WHERE parent_id=$1)`, id).Scan(&hasDependents); err != nil {
+					return nil, err
+				}
+				if hasDependents {
+					return nil, problem.New(409, "REPORT_TYPE_IN_USE", "Kategori induk yang telah digunakan tidak dapat dijadikan subkategori.")
+				}
+			}
+		}
+	}
+	if e.Path == "faqs" {
+		if typeID, ok := values["report_type_id"].(string); ok {
+			var isChild bool
+			err = tx.tx.QueryRow(ctx, `SELECT parent_id IS NOT NULL FROM report_types WHERE id=$1 FOR KEY SHARE`, typeID).Scan(&isChild)
+			if errors.Is(err, pgx.ErrNoRows) || (err == nil && isChild) {
+				return nil, problem.New(422, "INVALID_FAQ_REPORT_TYPE", "FAQ hanya dapat dihubungkan dengan kategori induk.")
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	saved, err := tx.Save(ctx, e, id, values)
 	if err != nil {
 		return nil, err
@@ -110,6 +145,13 @@ func (s *Service) Mutate(ctx context.Context, actor auth.Principal, e Entity, id
 	if e.Path == "roles" {
 		if ids, ok := values["permission_ids"].([]string); ok {
 			if err = tx.Assign(ctx, saved, ids); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if e.Path == "users" {
+		if _, hasPassword := values["password_hash"]; hasPassword {
+			if _, err = tx.tx.Exec(ctx, `UPDATE admin_users SET must_change_password=true,temporary_credential_expires_at=now()+interval '24 hours' WHERE id=$1`, saved); err != nil {
 				return nil, err
 			}
 		}

@@ -4,6 +4,19 @@ import { bridgePath } from "@/features/admin/bridge";
 import { boundedStream, readBoundedText, BodyLimitError } from "@/features/admin/stream";
 export const dynamic = "force-dynamic";
 function failure(status: number, message: string) { return Response.json({ success: false, error: { code: "BRIDGE_ERROR", message }, meta: { request_id: "frontend" } }, { status, headers: { "Cache-Control": "no-store, private", "X-Content-Type-Options": "nosniff" } }); }
+async function readBoundedBytes(stream: ReadableStream<Uint8Array> | null, maximum: number, signal: AbortSignal): Promise<Uint8Array> {
+    if (!stream) return new Uint8Array();
+    const reader = stream.getReader(); const chunks: Uint8Array[] = []; let size = 0;
+    try {
+        while (true) {
+            if (signal.aborted) throw new Error("request cancelled");
+            const { value, done } = await reader.read(); if (done) break;
+            size += value.byteLength; if (size > maximum) throw new BodyLimitError(); chunks.push(value);
+        }
+    } catch (error) { await reader.cancel().catch(() => undefined); throw error; }
+    const result = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength; }
+    return result;
+}
 async function forward(request: NextRequest, context: {
     params: Promise<{
         path: string[];
@@ -17,13 +30,19 @@ async function forward(request: NextRequest, context: {
     if (request.method !== "GET" && request.headers.get("origin") !== config.appOrigin)
         return failure(403, "Origin request tidak valid.");
     const isSSE = route === "admin/notifications/stream";
+    const isImportPreview = path.length === 4 && path[2] === "import" && path[3] === "preview";
+    const isWorkbookDownload = path.length === 3 && ["export", "template"].includes(path[2]);
     const signal = isSSE ? request.signal : AbortSignal.any([request.signal, AbortSignal.timeout(15000)]);
     const headers = new Headers({ Accept: "application/json" });
     const token = request.cookies.get("wbs_session")?.value;
     if (token && /^[a-f0-9]{64}$/.test(token))
         headers.set("Cookie", `wbs_session=${token}`);
     if (request.method !== "GET") {
-        headers.set("Content-Type", "application/json");
+        const incomingType = request.headers.get("content-type") ?? "";
+        if (isImportPreview) {
+            if (!incomingType.toLowerCase().startsWith("multipart/form-data; boundary=")) return failure(415, "Gunakan multipart/form-data.");
+            headers.set("Content-Type", incomingType);
+        } else headers.set("Content-Type", "application/json");
         headers.set("Origin", config.appOrigin);
         headers.set("X-CSRF-Token", request.headers.get("x-csrf-token") ?? "");
     }
@@ -35,9 +54,14 @@ async function forward(request: NextRequest, context: {
         return forwardSSE(request,config.apiBaseURL,headers);
     }
     try {
-        let body: string | undefined;
-        if (["POST", "PATCH"].includes(request.method))
-            body = await readBoundedText(request.body, 1048576, signal);
+        let body: BodyInit | undefined;
+        if (isImportPreview) {
+            const bytes = await readBoundedBytes(request.body, 6 * 1024 * 1024, signal);
+            const copy = new ArrayBuffer(bytes.byteLength);
+            new Uint8Array(copy).set(bytes);
+            body = copy;
+        }
+        else if (["POST", "PATCH"].includes(request.method)) body = await readBoundedText(request.body, 1048576, signal);
         const query = new URLSearchParams();
         for (const key of ["page", "page_size", "per_page", "search", "is_active", "report_type_id", "status", "date_from", "date_to", "sort", "direction", "recent_limit", "history_page", "history_per_page", "channel"]) {
             const value = request.nextUrl.searchParams.get(key);
@@ -62,6 +86,15 @@ async function forward(request: NextRequest, context: {
             responseHeaders.set("Content-Type", kind);
             responseHeaders.set("Content-Length", String(length));
             responseHeaders.set("Content-Disposition", `attachment; filename="report-${path[2]}.${ext[kind]}"`);
+            return new Response(boundedStream(upstream.body, length), { status: 200, headers: responseHeaders });
+        }
+        if (isWorkbookDownload && upstream.ok) {
+            const kind = upstream.headers.get("content-type") ?? "";
+            const length = Number(upstream.headers.get("content-length"));
+            if (!kind.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") || !upstream.body || !Number.isInteger(length) || length < 1 || length > 32 * 1024 * 1024) { await upstream.body?.cancel(); return failure(502, "Respons workbook tidak valid."); }
+            responseHeaders.set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            responseHeaders.set("Content-Length", String(length));
+            responseHeaders.set("Content-Disposition", `attachment; filename="${path[1]}_${path[2]}.xlsx"`);
             return new Response(boundedStream(upstream.body, length), { status: 200, headers: responseHeaders });
         }
         let text: string;

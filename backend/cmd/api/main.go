@@ -44,7 +44,7 @@ func run() error {
 	gate := ratelimit.NewPostgres(pool, c.Security.RateSlots, c.Security.RateTimeout)
 	a := auth.NewHandler(authService, log, c.Security.CookieSecure, c.SessionTTL, c.Origins).UseRateGate(gate, c.Security.LoginLimit, c.Security.LoginWindow)
 	a.Register(r)
-	master.NewHandler(master.NewService(master.NewRepository(pool), c.QueryTimeout), a).Register(r)
+	master.NewHandler(master.NewService(master.NewRepository(pool), c.QueryTimeout), a).UseRateGate(gate).Register(r)
 	zone, err := time.LoadLocation(c.Reports.Timezone)
 	if err != nil {
 		return fmt.Errorf("invalid report timezone")

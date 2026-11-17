@@ -127,6 +127,10 @@ func (h *Handler) Authenticate() gin.HandlerFunc {
 			return
 		}
 		c.Set("principal", p)
+		if p.MustChangePassword && c.Request.URL.Path != "/api/v1/auth/change-password" && c.Request.URL.Path != "/api/v1/auth/me" && c.Request.URL.Path != "/api/v1/auth/logout" {
+			h.Fail(c, problem.New(403, "PASSWORD_CHANGE_REQUIRED", "Ubah password sebelum menggunakan aplikasi."))
+			return
+		}
 		c.Next()
 	}
 }
@@ -175,11 +179,32 @@ func (h *Handler) Logout(c *gin.Context) {
 	h.cookie(c, "", -1)
 	response.Success(c, 200, gin.H{"status": "logged_out"})
 }
+func (h *Handler) ChangePassword(c *gin.Context) {
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := Decode(c, &req); err != nil {
+		h.Fail(c, err)
+		return
+	}
+	if len(req.CurrentPassword) > 72 || len(req.NewPassword) > 72 {
+		h.Fail(c, problem.New(422, "VALIDATION_ERROR", "Password tidak valid."))
+		return
+	}
+	if err := h.s.ChangePassword(c.Request.Context(), h.s.repo.(PasswordChanger), Current(c).ID, req.CurrentPassword, req.NewPassword); err != nil {
+		h.Fail(c, err)
+		return
+	}
+	h.cookie(c, "", -1)
+	response.Success(c, 200, gin.H{"status": "password_changed", "login_required": true})
+}
 func (h *Handler) Register(r *gin.Engine) {
 	g := r.Group("/api/v1/auth")
 	g.POST("/login", h.Login)
 	g.GET("/me", h.Authenticate(), h.Me)
 	g.POST("/logout", h.Authenticate(), h.CSRF(), h.Logout)
+	g.POST("/change-password", h.Authenticate(), h.CSRF(), h.ChangePassword)
 }
 
 // Compatibility aliases retained for existing auth tests/callers.

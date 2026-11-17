@@ -28,7 +28,7 @@ var entities = []Entity{
 	{"users", "admin_users", "users.manage", true, []Field{{"role_id", "uuid", true, 0}, {"name", "string", true, 150}, {"email", "email", true, 254}, {"password", "password", true, 72}, {"is_active", "bool", false, 0}}, []string{"name", "email"}, true},
 	{"roles", "roles", "roles.manage", true, []Field{{"name", "string", true, 100}, {"description", "string", false, 10000}, {"permission_ids", "ids", false, 0}}, []string{"name"}, true},
 	{"permissions", "permissions", "permissions.manage", true, []Field{{"slug", "slug", true, 100}, {"module_name", "string", true, 100}, {"description", "string", false, 10000}}, []string{"slug", "module_name"}, false},
-	{"report-types", "report_types", "report-types.manage", false, []Field{{"name", "string", true, 150}, {"description", "string", false, 10000}, {"is_active", "bool", false, 0}}, []string{"name"}, true},
+	{"report-types", "report_types", "report-types.manage", false, []Field{{"parent_id", "nullable_uuid", false, 0}, {"name", "string", true, 150}, {"description", "string", false, 10000}, {"is_active", "bool", false, 0}}, []string{"name"}, true},
 	{"faqs", "faqs", "faqs.manage", false, []Field{{"report_type_id", "nullable_uuid", false, 0}, {"question", "string", true, 5000}, {"answer", "string", true, 20000}, {"sort_order", "int", false, 0}, {"is_active", "bool", false, 0}}, []string{"question", "answer"}, false},
 	{"email-templates", "email_templates", "email-templates.manage", false, []Field{{"event_key", "event", true, 100}, {"subject", "string", true, 255}, {"body_html", "string", true, 100000}}, []string{"event_key", "subject"}, true},
 }

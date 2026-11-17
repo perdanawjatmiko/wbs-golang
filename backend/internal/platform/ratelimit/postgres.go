@@ -44,7 +44,7 @@ func Bucket(ip string, slots int) (int, error) {
 	return int(binary.BigEndian.Uint64(sum[:8]) % uint64(slots)), nil
 }
 func (p *Postgres) Check(ctx context.Context, scope, ip string, limit int, window time.Duration) (Decision, error) {
-	if scope != "admin_login" && scope != "report_submit" && scope != "report_track" {
+	if scope != "admin_login" && scope != "report_submit" && scope != "report_track" && scope != "master_import_preview" && scope != "master_import_commit" && scope != "master_user_admin" {
 		return Decision{}, fmt.Errorf("invalid rate scope")
 	}
 	if limit < 1 || limit > 10000 || window < time.Second || window > 24*time.Hour {

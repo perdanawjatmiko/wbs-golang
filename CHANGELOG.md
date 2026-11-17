@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 — Phase 7 master data enhancements
+
+- Additive migration 000006 adds two-level report type hierarchy, preserves flat legacy rows as roots, guards FAQ parent-only references, and adds bounded import preview storage plus temporary-password lifecycle metadata.
+- Extend public report submission to validate an active parent/child pair while retaining the existing stored child FK and report/tracking contracts.
+- Add permission-protected XLSX template/export, non-mutating preview and transactional idempotent upsert for users, report types, and FAQs; passwords/credentials are excluded and new imported users remain inactive pending administrator provisioning.
+- Add CRUD dialogs, import preview UI, dedicated Tiptap email-template pages, and cascading public report type selection while retaining WBS visual tokens.
+- Add Phase 7 architecture, migration, import/export, security, and test documentation. Database migration and browser visual verification remain blocked pending disposable QA infrastructure.
+
 ## 2026-11-14 — Phase 4 multi-channel notifications
 
 - Add transactional outbox, durable realtime events, per-admin inbox, deduplicated deliveries and audited bounded manual retry through additive migration000004.

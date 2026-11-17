@@ -57,7 +57,7 @@ func TestFailureCleanupAndUncertainCommit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			store := &fakeStore{fail: tt.fail}
 			service := NewService(fakeData{tt.err, tt.publish}, store, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
-			_, err := service.Submit(context.Background(), Submission{Name: "User", Contact: "user@example.test", ContactType: "EMAIL", ReportTypeID: "00000000-0000-0000-0000-000000000001", Detail: "Details"}, &filestore.File{Key: "key"})
+			_, err := service.Submit(context.Background(), Submission{Name: "User", Contact: "user@example.test", ContactType: "EMAIL", ReportParentID: "00000000-0000-0000-0000-000000000002", ReportTypeID: "00000000-0000-0000-0000-000000000001", Detail: "Details"}, &filestore.File{Key: "key"})
 			if store.removed != tt.removed {
 				t.Fatal("cleanup mismatch")
 			}

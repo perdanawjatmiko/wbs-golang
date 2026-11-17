@@ -54,7 +54,9 @@ func Template(subject, body string) (string, error) {
 	}
 	// Deliberately small formatting-only allowlist: no URL, style, image, script or event attributes.
 	policy := bluemonday.NewPolicy()
-	policy.AllowElements("p", "br", "strong", "em", "ul", "ol", "li", "h1", "h2", "h3", "blockquote")
+	policy.AllowElements("p", "br", "strong", "em", "u", "ul", "ol", "li", "h1", "h2", "h3", "blockquote", "a")
+	policy.AllowAttrs("href").OnElements("a")
+	policy.AllowURLSchemes("http", "https", "mailto")
 	cleaned := policy.Sanitize(body)
 	if strings.TrimSpace(cleaned) == "" {
 		return "", fmt.Errorf("HTML body is empty after sanitization")

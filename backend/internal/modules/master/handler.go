@@ -4,7 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"strings"
+	"time"
 	"wbs-golang/backend/internal/modules/auth"
+	"wbs-golang/backend/internal/platform/problem"
+	"wbs-golang/backend/internal/platform/ratelimit"
 	"wbs-golang/backend/internal/platform/response"
 	"wbs-golang/backend/internal/platform/security"
 )
@@ -12,9 +15,11 @@ import (
 type Handler struct {
 	s    *Service
 	auth *auth.Handler
+	gate ratelimit.Gate
 }
 
-func NewHandler(s *Service, a *auth.Handler) *Handler { return &Handler{s, a} }
+func NewHandler(s *Service, a *auth.Handler) *Handler    { return &Handler{s: s, auth: a} }
+func (h *Handler) UseRateGate(g ratelimit.Gate) *Handler { h.gate = g; return h }
 func parseQuery(c *gin.Context, public bool) (Query, error) {
 	q := Query{Page: 1, Size: 20, Search: strings.TrimSpace(c.Query("search")), Active: c.Query("is_active"), ReportType: c.Query("report_type_id"), Public: public}
 	var err error
@@ -44,6 +49,16 @@ func (h *Handler) Register(r *gin.Engine) {
 			}
 			c.Next()
 		})
+		importEntity := e
+		if importEntity.Path == "users" {
+			importEntity.Path = "admin-users"
+		}
+		if _, supported := importColumns[importEntity.Path]; supported {
+			g.GET("/template", func(c *gin.Context) { h.export(c, importEntity, true) })
+			g.GET("/export", func(c *gin.Context) { h.export(c, importEntity, false) })
+			g.POST("/import/preview", h.limitImport("master_import_preview"), func(c *gin.Context) { h.previewImport(c, importEntity) })
+			g.POST("/import/commit", h.limitImport("master_import_commit"), func(c *gin.Context) { h.commitImport(c, importEntity) })
+		}
 		g.GET("", func(c *gin.Context) { h.list(c, e, false) })
 		g.GET("/:id", func(c *gin.Context) {
 			v, err := h.s.Get(c.Request.Context(), e, c.Param("id"))
@@ -53,13 +68,41 @@ func (h *Handler) Register(r *gin.Engine) {
 			}
 			response.Success(c, 200, v)
 		})
-		g.POST("", func(c *gin.Context) { h.save(c, e, false) })
-		g.PATCH("/:id", func(c *gin.Context) { h.save(c, e, false) })
-		g.DELETE("/:id", func(c *gin.Context) { h.save(c, e, true) })
+		write := gin.HandlerFunc(func(c *gin.Context) { h.save(c, e, false) })
+		remove := gin.HandlerFunc(func(c *gin.Context) { h.save(c, e, true) })
+		if e.Path == "users" {
+			g.POST("", h.limitImport("master_user_admin"), write)
+			g.PATCH("/:id", h.limitImport("master_user_admin"), write)
+			g.DELETE("/:id", h.limitImport("master_user_admin"), remove)
+		} else {
+			g.POST("", write)
+			g.PATCH("/:id", write)
+			g.DELETE("/:id", remove)
+		}
 	}
 	for _, path := range []string{"report-types", "faqs"} {
 		e, _ := Find(path)
 		r.GET("/api/v1/public/"+path, func(c *gin.Context) { h.list(c, e, true) })
+	}
+}
+
+func (h *Handler) limitImport(scope string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if h.gate == nil {
+			c.Next()
+			return
+		}
+		decision, err := h.gate.Check(c.Request.Context(), scope, c.ClientIP(), 10, 15*time.Minute)
+		if err != nil {
+			h.auth.Fail(c, problem.New(503, "RATE_LIMIT_UNAVAILABLE", "Layanan pembatasan request belum tersedia."))
+			return
+		}
+		if !decision.Allowed {
+			c.Header("Retry-After", strconv.Itoa(decision.RetryAfter))
+			response.Error(c, 429, "RATE_LIMITED", "Terlalu banyak request administratif. Coba kembali nanti.")
+			return
+		}
+		c.Next()
 	}
 }
 func (h *Handler) list(c *gin.Context, e Entity, public bool) {

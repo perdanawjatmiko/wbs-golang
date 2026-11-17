@@ -68,23 +68,25 @@ func phase2DB(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(func() {
 		pool.Close()
-		if err := migration.Run(ctx, u.String(), "down"); err != nil {
+		// This generated schema is disposable. Migration 000006 intentionally refuses
+		// a lossy hierarchy down migration, so remove only this isolated test schema.
+		if _, err := root.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
 			t.Error(err)
-			return
 		}
-		_, _ = root.Exec(ctx, "DROP TABLE "+schema+".schema_migrations")
-		_, _ = root.Exec(ctx, "DROP SCHEMA "+schema)
 		root.Close()
 	})
 	return pool
 }
+
+var testReportParentID string
+
 func inputFor(typeID, contact string) reports.Submission {
-	return reports.Submission{Name: "Reporter", Contact: contact, ContactType: "EMAIL", ReportTypeID: typeID, Detail: "Plain text <script>never render as HTML</script>"}
+	return reports.Submission{Name: "Reporter", Contact: contact, ContactType: "EMAIL", ReportParentID: testReportParentID, ReportTypeID: typeID, Detail: "Plain text <script>never render as HTML</script>"}
 }
 func multipartRequest(input reports.Submission, filename, kind string, data []byte) *http.Request {
 	var b bytes.Buffer
 	writer := multipart.NewWriter(&b)
-	for k, v := range map[string]string{"name": input.Name, "contact": input.Contact, "contact_type": input.ContactType, "report_type_id": input.ReportTypeID, "detail": input.Detail} {
+	for k, v := range map[string]string{"name": input.Name, "contact": input.Contact, "contact_type": input.ContactType, "report_parent_id": input.ReportParentID, "report_type_id": input.ReportTypeID, "detail": input.Detail} {
 		_ = writer.WriteField(k, v)
 	}
 	if filename != "" {
@@ -102,11 +104,17 @@ func multipartRequest(input reports.Submission, filename, kind string, data []by
 func TestPhase2Integration(t *testing.T) {
 	pool := phase2DB(t)
 	ctx := context.Background()
-	var typeID, inactiveID string
-	if err := pool.QueryRow(ctx, `INSERT INTO report_types(name) VALUES('Valid type') RETURNING id::text`).Scan(&typeID); err != nil {
+	var typeID, parentID, inactiveID string
+	if err := pool.QueryRow(ctx, `INSERT INTO report_types(name) VALUES('Valid type') RETURNING id::text`).Scan(&parentID); err != nil {
 		t.Fatal(err)
 	}
+	if err := pool.QueryRow(ctx, `INSERT INTO report_types(parent_id,name) VALUES($1,'Valid child') RETURNING id::text`, parentID).Scan(&typeID); err != nil {
+		t.Fatal(err)
+	}
+	var inactiveChild string
 	_ = pool.QueryRow(ctx, `INSERT INTO report_types(name,is_active) VALUES('Inactive',false) RETURNING id::text`).Scan(&inactiveID)
+	_ = pool.QueryRow(ctx, `INSERT INTO report_types(parent_id,name,is_active) VALUES($1,'Inactive child',false) RETURNING id::text`, parentID).Scan(&inactiveChild)
+	testReportParentID = parentID
 	zone, _ := time.LoadLocation("Asia/Jakarta")
 	now := time.Date(2026, 11, 13, 17, 0, 0, 0, time.UTC)
 	repo := reports.NewRepository(pool, zone, func() time.Time { return now }, func() (string, error) { return "X9", nil })
@@ -449,13 +457,13 @@ func TestPhase2Integration(t *testing.T) {
 			question string
 			order    int
 			active   bool
-		}{{nil, "General", 2, true}, {&typeID, "Specific", 1, true}, {nil, "Hidden", 0, false}, {&inactiveID, "Inactive type", 0, true}} {
+		}{{nil, "General", 2, true}, {&parentID, "Specific", 1, true}, {nil, "Hidden", 0, false}, {&inactiveID, "Inactive type", 0, true}} {
 			_, err := pool.Exec(ctx, `INSERT INTO faqs(report_type_id,question,answer,sort_order,is_active) VALUES($1,$2,'Answer',$3,$4)`, f.typeID, f.question, f.order, f.active)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
-		for _, query := range []string{"", "?report_type_id=general", "?report_type_id=" + typeID, "?report_type_id=" + inactiveID} {
+		for _, query := range []string{"", "?report_type_id=general", "?report_type_id=" + parentID, "?report_type_id=" + inactiveID} {
 			w := serve(httptest.NewRequest("GET", "/api/v1/public/faqs"+query, nil), 200)
 			if strings.Contains(w.Body.String(), "Hidden") || strings.Contains(w.Body.String(), "Inactive type") {
 				t.Fatal("inactive exposed")

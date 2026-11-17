@@ -94,3 +94,8 @@ GET /api/v1/admin/notifications, GET /notifications/unread-count, POST /notifica
 GET /api/v1/admin/notification-deliveries and /:id, POST /:id/retry require notifications.manage; retry also CSRF. List query page/per_page(max100), channel(EMAIL/TELEGRAM), status(pending/processing/sent/retrying/failed). Data: items of safe metadata and pagination plus global metrics. Detail returns the same DTO with one item. No recipient/payload is returned. Retry conflict409 DELIVERY_RETRY_CONFLICT covers processing/nonfailed/exhausted/already-manually-retried state. Read other inbox id returns404. Read and retry success use existing envelope.
 
 GET /api/v1/admin/notifications/stream is the text/event-stream exception to JSON. Requires report.view/current session; Last-Event-ID is a nonnegative decimal sequence. See realtime-sse.md for frames, bounded replay/reset, authorization and no-cache policy. No external notification endpoint or public stream exists.
+# Phase 7 additive contracts
+
+Public `POST /api/v1/public/reports` multipart requests now include `report_parent_id` and `report_type_id` (the selected child). The Go service requires an active root and active child with that parent. `GET /api/v1/public/report-types` returns active root and active child rows with nullable `parent_id`; children of inactive roots are omitted. Existing root-linked reports remain valid legacy records.
+
+For `users`, `report-types`, and `faqs`, authenticated admin routes additionally expose `GET /template`, `GET /export`, `POST /import/preview` (multipart field `file`), and `POST /import/commit` (JSON `preview_token`). These remain behind each resource's existing permission and CSRF checks. See [Phase 7 import/export](phase-7-import-export.md) for bounds and upsert keys.

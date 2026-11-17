@@ -5,6 +5,7 @@ export type User = {
   role_id: string;
   role_name: string;
   permissions: string[];
+  must_change_password?: boolean;
 };
 export type Session = {
   user: User;
@@ -32,6 +33,7 @@ export type Field = {
     | "number"
     | "role"
     | "report-type"
+    | "report-parent"
     | "permissions";
   required?: boolean;
   max?: number;
@@ -99,8 +101,9 @@ export const resources: Resource[] = [
     path: "report-types",
     title: "Jenis Laporan",
     permission: "report-types.manage",
-    columns: ["name", "is_active"],
+    columns: ["name", "parent_name", "is_active"],
     fields: [
+      { name: "parent_id", label: "Kategori induk (kosong = kategori utama)", kind: "report-parent" },
       { name: "name", label: "Nama", required: true, max: 150 },
       { name: "description", label: "Deskripsi", kind: "textarea", max: 10000 },
       { name: "is_active", label: "Aktif", kind: "boolean" },
@@ -233,7 +236,7 @@ export function validateForm(
     )
       return "Email tidak valid.";
     if (
-      (field.kind === "role" || field.kind === "report-type") &&
+      (field.kind === "role" || field.kind === "report-type" || field.kind === "report-parent") &&
       value &&
       !/^[0-9a-f-]{36}$/i.test(String(value))
     )

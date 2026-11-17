@@ -11,6 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ImportExport } from "./import-export";
 import { adminRequest, AdminApiError } from "./client";
 import {
   validateForm,
@@ -39,7 +41,7 @@ function initialValues(
               ? 0
               : field.kind === "permissions"
                 ? []
-                : field.kind === "report-type"
+                : field.kind === "report-type" || field.kind === "report-parent"
                   ? null
                   : "")),
     ]),
@@ -116,13 +118,15 @@ export function Management({
         ? "admin/roles"
         : resource.path === "roles"
           ? "admin/permissions"
-          : resource.path === "faqs"
-            ? "public/report-types"
+          : resource.path === "report-types"
+            ? "admin/report-types"
+            : resource.path === "faqs"
+              ? "admin/report-types"
             : null;
     if (path)
       options(path).then(
         (rows) => {
-          if (!ignore) setChoices(rows);
+          if (!ignore) setChoices(resource.path === "faqs" || resource.path === "report-types" ? rows.filter((row) => row.parent_id == null) : rows);
         },
         (err) => {
           if (!ignore) setOptionsError(err.message);
@@ -226,6 +230,7 @@ export function Management({
           Tambah data
         </button>
       </div>
+      {["users", "report-types", "faqs"].includes(resource.path) && <ImportExport module={resource.path as "users" | "report-types" | "faqs"} csrf={csrf} />}
       {feedback && (
         <p role="status" className="text-emerald-700 dark:text-emerald-400">
           {feedback}
@@ -364,15 +369,16 @@ export function Management({
           </nav>
         </>
       )}
-      {editing !== undefined && (
+      <Dialog open={editing !== undefined} onOpenChange={(openState) => { if (!openState && !saving) setEditing(undefined); }}>
+      {editing !== undefined && <DialogContent>
         <form
           onSubmit={save}
-          className="space-y-5 rounded-xl border border-zinc-300 p-6 dark:border-zinc-700"
+          className="space-y-5"
           aria-label={editing ? "Edit data" : "Tambah data"}
         >
-          <h2 className="text-xl font-semibold">
+          <DialogHeader><DialogTitle>
             {editing ? "Edit" : "Tambah"} {resource.title}
-          </h2>
+          </DialogTitle><DialogDescription>Lengkapi field yang diperlukan, lalu simpan perubahan.</DialogDescription></DialogHeader>
           {optionsError && (
             <p role="alert">
               Pilihan referensi gagal dimuat: {optionsError}. Muat ulang
@@ -422,7 +428,7 @@ export function Management({
                   {field.label}
                 </label>
               );
-            if (field.kind === "role" || field.kind === "report-type")
+            if (field.kind === "role" || field.kind === "report-type" || field.kind === "report-parent")
               return (
                 <label key={id} className="block" htmlFor={id}>
                   {field.label}
@@ -430,11 +436,12 @@ export function Management({
                     id={id}
                     className="admin-input"
                     required={field.required}
+                    disabled={resource.path === "report-types" && field.kind === "report-parent" && !!editing && editing.parent_id == null}
                     value={String(value ?? "")}
                     onChange={(e) => update(e.target.value || null)}
                   >
                     <NativeSelectOption value="">
-                      {field.kind === "role" ? "Pilih role" : "FAQ umum"}
+                      {field.kind === "role" ? "Pilih role" : field.kind === "report-parent" ? "Kategori utama" : "FAQ umum"}
                     </NativeSelectOption>
                     {value && !choices.some((c) => c.id === value) && (
                       <NativeSelectOption value={String(value)}>
@@ -534,7 +541,8 @@ export function Management({
             </button>
           </div>
         </form>
-      )}
+      </DialogContent>}
+      </Dialog>
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {

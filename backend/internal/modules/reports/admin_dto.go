@@ -99,15 +99,17 @@ func ParseAdminQuery(q url.Values, zone *time.Location) (AdminQuery, error) {
 }
 
 type AdminItem struct {
-	ID           string    `json:"id"`
-	Code         string    `json:"code"`
-	ReporterName string    `json:"reporter_name"`
-	Contact      string    `json:"contact"`
-	ReportTypeID string    `json:"report_type_id"`
-	ReportType   string    `json:"report_type"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	Code             string    `json:"code"`
+	ReporterName     string    `json:"reporter_name"`
+	Contact          string    `json:"contact"`
+	ReportTypeID     string    `json:"report_type_id"`
+	ReportType       string    `json:"report_type"`
+	ReportTypeParent string    `json:"report_type_parent"`
+	ReportTypeChild  string    `json:"report_type_child,omitempty"`
+	Status           string    `json:"status"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 type AdminList struct {
 	Items      []AdminItem `json:"items"`
